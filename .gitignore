@@ -1,0 +1,6 @@
+*.iso
+*.*vhd*
+*.msu
+*.vhd
+*.vhdx
+*.avhdx

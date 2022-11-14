@@ -1,0 +1,56 @@
+[
+    {
+        "DistinguishedName":  "CN=IT,OU=IT,DC=KaroonBR,DC=local",
+        "Name":  "IT",
+        "GroupCategory":  "Security",
+        "GroupScope":  "Global",
+        "Members":  [
+                        "MikeS",
+                        "MaryL"
+                    ]
+    },
+    {
+        "DistinguishedName":  "CN=Sales,OU=Sales,DC=KaroonBR,DC=local",
+        "Name":  "Sales",
+        "GroupCategory":  "Security",
+        "GroupScope":  "Global",
+        "Members":  [
+                        "SamanthaS",
+                        "SonyaS",
+                        "SamS"
+                    ]
+    },
+    {
+        "DistinguishedName":  "CN=Marketing,OU=Marketing,DC=KaroonBR,DC=local",
+        "Name":  "Marketing",
+        "GroupCategory":  "Security",
+        "GroupScope":  "Global",
+        "Members":  [
+                        "MattS",
+                        "MonicaS",
+                        "MarkS"
+                    ]
+    },
+    {
+        "DistinguishedName":  "CN=Accounting,OU=Accounting,DC=KaroonBR,DC=local",
+        "Name":  "Accounting",
+        "GroupCategory":  "Security",
+        "GroupScope":  "Global",
+        "Members":  [
+                        "AaronS",
+                        "AndreaS",
+                        "AndyS"
+                    ]
+    },
+    {
+        "DistinguishedName":  "CN=JEA Operators,OU=JEA_Operators,DC=KaroonBR,DC=local",
+        "Name":  "JEA Operators",
+        "GroupCategory":  "Security",
+        "GroupScope":  "Global",
+        "Members":  [
+                        "JimJ",
+                        "JillJ"
+                    ]
+    }
+
+]

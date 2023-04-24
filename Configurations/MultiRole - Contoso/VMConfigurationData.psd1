@@ -37,8 +37,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             )
 
             # Domain and Domain Controller information
-            DomainName                  = "Karoongas.local"
-            DomainDN                    = "DC=karoongas,DC=local"
+            DomainName                  = "Contoso.local"
+            DomainDN                    = "DC=contoso,DC=local"
             DCDatabasePath              = "C:\NTDS"
             DCLogPath                   = "C:\NTDS"
             SysvolPath                  = "C:\Sysvol"
@@ -58,7 +58,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             DHCPRouter                  = '192.168.3.1'
 
             # ADCS Certificate Services information
-            CACN                        = 'karoongas.local'
+            CACN                        = 'Constoso.local'
             CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=Company"
             CADatabasePath              = "C:\windows\system32\CertLog"
             CALogPath                   = "C:\CA_Logs"
@@ -125,11 +125,11 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
         DomainJoin = joions a computer to the domain
 #>
         @{
-            NodeName                = 'DC1-KAROONAUS'
+            NodeName                = 'DC1-ContosoAUS'
             IPAddress               = '192.168.3.20'
             Role                    = @('DC', 'DHCP', 'ADCS','RDP')
             Lability_BootOrder      = 10
-            Lability_BootDelay      = 240 # Number of seconds to delay before others
+            Lability_BootDelay      = 300 # Number of seconds to delay before others
             Lability_timeZone       = 'AUS Eastern Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2019_x64_Standard_EN_Core_Eval'
             Lability_MinimumMemory  = 2GB
@@ -141,7 +141,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
         }
 
         @{
-            NodeName           = 'S1-KaroonAUS'
+            NodeName           = 'S1-ContosoAUS'
             IPAddress          = '192.168.3.60'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
             Role               = @('DomainJoin', 'Web','RDP')
@@ -169,7 +169,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
         }
 #>
         @{
-            NodeName                = 'Cli1-KaroonAUS'
+            NodeName                = 'Cli1-ContosoAUS'
             IPAddress               = '192.168.3.100'
             Role                    = @('domainJoin', 'RSAT', 'RDP')
             Lability_ProcessorCount = 2

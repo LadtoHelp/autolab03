@@ -27,7 +27,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             AddressFamily               = 'IPv4'
             IPNetwork                   = '192.168.3.0/24'
             IPNatName                   = 'LabNat'
-            DnsServerAddress            = '192.168.3.10'
+            DnsServerAddress            = '192.168.3.20'
 
             # Firewall settings to enable
             FirewallRuleNames           = @(
@@ -37,8 +37,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             )
 
             # Domain and Domain Controller information
-            DomainName                  = "mycompany.local"
-            DomainDN                    = "DC=MYCOMPANY,DC=Local"
+            DomainName                  = "Contoso.local"
+            DomainDN                    = "DC=contoso,DC=local"
             DCDatabasePath              = "C:\NTDS"
             DCLogPath                   = "C:\NTDS"
             SysvolPath                  = "C:\Sysvol"
@@ -54,12 +54,12 @@ This example code is provided without copyright and AS IS.  It is free for you t
             DHCPAddressFamily           = 'IPv4'
             DHCPLeaseDuration           = '00:08:00'
             DHCPScopeID                 = '192.168.3.0'
-            DHCPDnsServerIPAddress      = '192.168.3.10'
+            DHCPDnsServerIPAddress      = '192.168.3.20'
             DHCPRouter                  = '192.168.3.1'
 
             # ADCS Certificate Services information
-            CACN                        = 'mycompany.local'
-            CADNSuffix                  = "C=AU,L=Melbourne,S=Victoria,O=starlighter"
+            CACN                        = 'Constoso.local'
+            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=Company"
             CADatabasePath              = "C:\windows\system32\CertLog"
             CALogPath                   = "C:\CA_Logs"
             ADCSCAType                  = 'EnterpriseRootCA'
@@ -74,7 +74,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_ProcessorCount     = 1
             Lability_MinimumMemory      = 1GB
             SecureBoot                  = $false
-            Lability_Media              = '2016_x64_Standard_Core_EN_Eval'
+            Lability_Media              = '2019_x64_Standard_Core_EN_Eval'
             <#
 
 
@@ -125,14 +125,14 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
         DomainJoin = joions a computer to the domain
 #>
         @{
-            NodeName                = 'DC1'
-            IPAddress               = '192.168.3.10'
+            NodeName                = 'DC1-ContosoAUS'
+            IPAddress               = '192.168.3.20'
             Role                    = @('DC', 'DHCP', 'ADCS','RDP')
             Lability_BootOrder      = 10
-            Lability_BootDelay      = 60 # Number of seconds to delay before others
-            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_BootDelay      = 300 # Number of seconds to delay before others
+            Lability_timeZone       = 'AUS Eastern Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2019_x64_Standard_EN_Core_Eval'
-            lability_startupmemory  = 4GB
+            Lability_MinimumMemory  = 2GB
             Lability_ProcessorCount = 2
             CustomBootStrap         = @'
                     # This must be set to handle larger .mof files
@@ -141,32 +141,42 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
         }
 
         @{
-            NodeName               = 'VRDPPC01'
-            IPAddress              = '192.168.3.50'
+            NodeName           = 'S1-ContosoAUS'
+            IPAddress          = '192.168.3.60'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role                   = @('DomainJoin', 'Web','RSAT','RSAT-DHCP')
-            Lability_BootOrder     = 20
-            lability_startupmemory = 4GB
-            Lability_timeZone      = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media         = '2019_x64_Standard_EN_Eval'
-            Lability_ProcessorCount = 4
+            Role               = @('DomainJoin', 'Web','RDP')
+            Lability_BootOrder = 20
+            Lability_timeZone  = 'AUS Eastern Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Media     = '2019_x64_Standard_EN_Eval'
             CustomBootStrap         = @'
-                    # To enable PSRemoting on the client
-                    Enable-PSRemoting -SkipNetworkProfileCheck -Force;
-                    MD C:\temp
-                    Invoke-webrequest -uri https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi -OutFile C:\temp\azureadconnect.msi -UseBasicParsing
+            Get-WindowsCapability -Name RSAT* -Online | Add-WindowsCapability -Online
+            md -Path $env:temp\edgeinstall -erroraction SilentlyContinue | Out-Null
+            $Download = join-path $env:temp\edgeinstall MicrosoftEdgeEnterpriseX64.msi
+            Invoke-WebRequest 'https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/a2662b5b-97d0-4312-8946-598355851b3b/MicrosoftEdgeEnterpriseX64.msi'  -OutFile $Download
+            Start-Process "$Download" -ArgumentList "/quiet /passive"
+
 '@
         }
-
+        <#
         @{
-            NodeName                = 'Cli1'
-            IPAddress               = '192.168.3.100'
-            Role                    = @('RSAT', 'RDP')
-            Lability_ProcessorCount = 2
-            lability_startupmemory  = 4GB
-            Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
+            NodeName                = 'N1'
+            IPAddress               = '192.168.3.60'
+            #Role = 'Nano'
             Lability_BootOrder      = 20
-            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Media          = '2016_x64_Standard_Nano_DSC_EN_Eval'
+            Lability_ProcessorCount = 1
+            Lability_StartupMemory  = 1GB
+        }
+#>
+        @{
+            NodeName                = 'Cli1-ContosoAUS'
+            IPAddress               = '192.168.3.100'
+            Role                    = @('domainJoin', 'RSAT', 'RDP')
+            Lability_ProcessorCount = 2
+            Lability_MinimumMemory  = 2GB
+            Lability_Media          = 'WIN10_x64_Enterprise_20H2_EN_Eval'
+            Lability_BootOrder      = 30
+            Lability_timeZone       = 'AUS Eastern Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Resource       = @()
             CustomBootStrap         = @'
                     # To enable PSRemoting on the client
@@ -220,11 +230,13 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
                 @{ Name = 'xActiveDirectory'; RequiredVersion = "3.0.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'xComputerManagement'; RequiredVersion = '4.1.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xNetworking'; RequiredVersion = '5.7.0.0'; Provider = 'PSGallery' },
-                @{ Name = 'xDhcpServer'; RequiredVersion = '3.0.0'; Provider = 'PSGallery' },
+                @{ Name = 'xDhcpServer'; RequiredVersion = '3.1.0'; Provider = 'PSGallery' },
                 @{ Name = 'xWindowsUpdate' ; RequiredVersion = '2.8.0.0'; Provider = 'PSGallery' },
-                @{ Name = 'xPSDesiredStateConfiguration'; RequiredVersion = '9.1.0'; },
+                @{ Name = 'xPSDesiredStateConfiguration'; RequiredVersion = '9.1.0'; Provider = 'PSGallery'},
                 @{ Name = 'xADCSDeployment'; RequiredVersion = '1.4.0.0'; Provider = 'PSGallery' },
-                @{ Name = 'xDnsServer'; RequiredVersion = "1.16.0.0"; Provider = 'PSGallery' }
+                @{ Name = 'xDnsServer'; RequiredVersion = "1.16.0.0"; Provider = 'PSGallery' },
+                @{ Name = 'xRobocopy';  RequiredVersion = "1.2.0.0"; Provider = 'PSGallery' }
+#'}
 
             )
             Resource    = @(

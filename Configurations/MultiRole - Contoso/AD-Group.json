@@ -1,6 +1,6 @@
 [
     {
-        "DistinguishedName":  "CN=IT,OU=IT,DC=myCompany,DC=local",
+        "DistinguishedName":  "CN=IT,OU=IT,DC=karoon,DC=au",
         "Name":  "IT",
         "GroupCategory":  "Security",
         "GroupScope":  "Global",
@@ -10,7 +10,7 @@
                     ]
     },
     {
-        "DistinguishedName":  "CN=Sales,OU=Sales,DC=myCompany,DC=local",
+        "DistinguishedName":  "CN=Sales,OU=Sales,DC=karoon,DC=au",
         "Name":  "Sales",
         "GroupCategory":  "Security",
         "GroupScope":  "Global",
@@ -21,7 +21,7 @@
                     ]
     },
     {
-        "DistinguishedName":  "CN=Marketing,OU=Marketing,DC=myCompany,DC=local",
+        "DistinguishedName":  "CN=Marketing,OU=Marketing,DC=karoon,DC=au",
         "Name":  "Marketing",
         "GroupCategory":  "Security",
         "GroupScope":  "Global",
@@ -32,7 +32,7 @@
                     ]
     },
     {
-        "DistinguishedName":  "CN=Accounting,OU=Accounting,DC=myCompany,DC=local",
+        "DistinguishedName":  "CN=Accounting,OU=Accounting,DC=karoon,DC=au",
         "Name":  "Accounting",
         "GroupCategory":  "Security",
         "GroupScope":  "Global",
@@ -43,7 +43,7 @@
                     ]
     },
     {
-        "DistinguishedName":  "CN=JEA Operators,OU=JEA_Operators,DC=myCompany,DC=local",
+        "DistinguishedName":  "CN=JEA Operators,OU=JEA_Operators,DC=karoon,DC=au",
         "Name":  "JEA Operators",
         "GroupCategory":  "Security",
         "GroupScope":  "Global",

@@ -7,24 +7,24 @@ The NanoServer images has been removed from this configuration because it is no 
 The lab builds the following:
 
     Computername : DC1
-    Description  : Windows Server 2019 Standard 64bit English Evaluation (*GUI*)
+    Description  : Windows Server 2019 Standard 64bit English Evaluation
     Role         : {DC, DHCP, ADCS}
     IPAddress    : 192.168.3.10
-    MemoryGB     : 4
-
-    Computername : S1
-    Description  : Windows Server 2019 Standard 64bit English Evaluation (*GUI*)
-    Role         : {DomainJoin, Web}
-    IPAddress    : 192.168.3.50
     MemoryGB     : 2
 
+    Computername : S1
+    Description  : Windows Server 2019 Standard 64bit English Evaluation
+    Role         : {DomainJoin, Web}
+    IPAddress    : 192.168.3.50
+    MemoryGB     : 1
+
     Computername : Cli1
-    Description  : Windows 10 64bit Enterprise 2109/21H2 English Evaluation
+    Description  : Windows 10 64bit Enterprise 2009 English Evaluation (20H2)
     Role         : {domainJoin, RSAT, RDP}
     IPAddress    : 192.168.3.100
-    MemoryGB     : 4
+    MemoryGB     : 2
 
-## To get started
+## To get started:
 
     To run the full lab setup, which includes Setup-Lab, Run-Lab, Enable-Internet, and Validate-Lab:
     PS> Unattend-Lab

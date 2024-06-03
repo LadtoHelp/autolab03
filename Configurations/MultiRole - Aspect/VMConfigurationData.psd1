@@ -112,7 +112,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             IPAddress          = '192.168.3.50'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
             #Role               = @('DomainJoin','RDP','MX')
-            Role               = @('RDP','MX','DomainJoin')
+            Role               = @('RDP','MX')
             Lability_BootOrder = 20
             Lability_timeZone  = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media     = '2022_x64_Standard_EN_Eval'
@@ -242,7 +242,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 @{
                     Id = 'Visual Studio 2013 x86'
                     FileName = 'vcredist_2013_x86.exe'
-                    Uri = 'https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x86.exe'
+                    Uri = 'https://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe'
                 },
                 @{
                     Id = "GoogleChrome"

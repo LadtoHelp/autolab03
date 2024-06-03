@@ -825,7 +825,7 @@ Configuration AutoLab {
             RetryCount           = '20'
             RetryIntervalSec     = '120'
         }
-
+ 
         xComputer JoinDCchck {
             Name       = $Node.NodeName
             DomainName = $Node.DomainName
@@ -833,7 +833,8 @@ Configuration AutoLab {
             DependsOn  = '[xWaitForADDomain]DscForestWaitchck'
         }
 
-        <# xPendingReboot RebootAfterDomainJoin {
+        #<# 
+        xPendingReboot RebootAfterDomainJoin {
             Name = 'DomainJoin'
         } #>
 

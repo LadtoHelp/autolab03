@@ -236,7 +236,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
                 @{ Name = 'xADCSDeployment'; RequiredVersion = '1.4.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xDnsServer'; RequiredVersion = "1.16.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'xRobocopy';  RequiredVersion = "1.2.0.0"; Provider = 'PSGallery' }
-'}
+#'}
 
             )
             Resource    = @(

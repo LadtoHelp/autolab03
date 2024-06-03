@@ -1,6 +1,6 @@
 [
     {
-        "DistinguishedName":  "CN=MaryL,OU=IT,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=MaryL,OU=IT,DC=Company,DC=Pri",
         "Name":  "MaryL",
         "SamAccountName":  "MaryL",
         "GivenName":  "Mary",
@@ -10,7 +10,7 @@
         "Department":  "IT"
     },
     {
-        "DistinguishedName":  "CN=MikeS,OU=IT,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=MikeS,OU=IT,DC=Company,DC=Pri",
         "Name":  "MikeS",
         "SamAccountName":  "MikeS",
         "GivenName":  "Mike",
@@ -20,7 +20,7 @@
         "Department":  "IT"
     },
     {
-        "DistinguishedName":  "CN=SimonS,OU=Dev,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=SimonS,OU=Dev,DC=Company,DC=Pri",
         "Name":  "SimonS",
         "SamAccountName":  "SimonS",
         "GivenName":  "Simon",
@@ -30,7 +30,7 @@
         "Department":  "Dev"
     },
     {
-        "DistinguishedName":  "CN=AaronS,OU=Accounting,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=AaronS,OU=Accounting,DC=Company,DC=Pri",
         "Name":  "AaronS",
         "SamAccountName":  "AaronS",
         "GivenName":  "Aaron",
@@ -40,7 +40,7 @@
         "Department":  "Accounting"
     },
     {
-        "DistinguishedName":  "CN=AndreaS,OU=Accounting,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=AndreaS,OU=Accounting,DC=Company,DC=Pri",
         "Name":  "AndreaS",
         "SamAccountName":  "AndreaS",
         "GivenName":  "Andrea",
@@ -50,7 +50,7 @@
         "Department":  "Accounting"
     },
     {
-        "DistinguishedName":  "CN=AndyS,OU=Accounting,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=AndyS,OU=Accounting,DC=Company,DC=Pri",
         "Name":  "AndyS",
         "SamAccountName":  "AndyS",
         "GivenName":  "Andy",
@@ -60,7 +60,7 @@
         "Department":  "Accounting"
     },
     {
-        "DistinguishedName":  "CN=SamS,OU=Sales,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=SamS,OU=Sales,DC=Company,DC=Pri",
         "Name":  "SamS",
         "SamAccountName":  "SamS",
         "GivenName":  "Sam",
@@ -70,7 +70,7 @@
         "Department":  "Sales"
     },
     {
-        "DistinguishedName":  "CN=SonyaS,OU=Sales,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=SonyaS,OU=Sales,DC=Company,DC=Pri",
         "Name":  "SonyaS",
         "SamAccountName":  "SonyaS",
         "GivenName":  "Sonya",
@@ -80,7 +80,7 @@
         "Department":  "Sales"
     },
     {
-        "DistinguishedName":  "CN=SamanthaS,OU=Sales,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=SamanthaS,OU=Sales,DC=Company,DC=Pri",
         "Name":  "SamanthaS",
         "SamAccountName":  "SamanthaS",
         "GivenName":  "Samantha",
@@ -90,7 +90,7 @@
         "Department":  "Sales"
     },
     {
-        "DistinguishedName":  "CN=MarkS,OU=Marketing,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=MarkS,OU=Marketing,DC=Company,DC=Pri",
         "Name":  "MarkS",
         "SamAccountName":  "MarkS",
         "GivenName":  "Mark",
@@ -100,7 +100,7 @@
         "Department":  "Marketing"
     },
     {
-        "DistinguishedName":  "CN=MonicaS,OU=Marketing,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=MonicaS,OU=Marketing,DC=Company,DC=Pri",
         "Name":  "MonicaS",
         "SamAccountName":  "MonicaS",
         "GivenName":  "Monica",
@@ -110,7 +110,7 @@
         "Department":  "Marketing"
     },
     {
-        "DistinguishedName":  "CN=MattS,OU=Marketing,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=MattS,OU=Marketing,DC=Company,DC=Pri",
         "Name":  "MattS",
         "SamAccountName":  "MattS",
         "GivenName":  "Matt",
@@ -120,7 +120,7 @@
         "Department":  "Marketing"
     },
     {
-        "DistinguishedName":  "CN=JimJ,OU=JEA_Operators,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=JimJ,OU=JEA_Operators,DC=Company,DC=Pri",
         "Name":  "JimJ",
         "SamAccountName":  "JimJ",
         "GivenName":  "Jim",
@@ -130,7 +130,7 @@
         "Department":  "IT"
     },
     {
-        "DistinguishedName":  "CN=JillJ,OU=JEA_Operators,DC=Karoongas,DC=local",
+        "DistinguishedName":  "CN=JillJ,OU=JEA_Operators,DC=Company,DC=Pri",
         "Name":  "JillJ",
         "SamAccountName":  "JillJ",
         "GivenName":  "Jill",

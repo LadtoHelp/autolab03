@@ -4,3 +4,5 @@
 *.vhd
 *.vhdx
 *.avhdx
+*.mof
+*.exe

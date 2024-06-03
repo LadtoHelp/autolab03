@@ -16,6 +16,8 @@ $credential = New-Object -typename Pscredential -ArgumentList Administrator, $se
     Import-DSCResource -modulename 'xWindowsUpdate' -ModuleVersion  '2.8.0.0'
     Import-DSCResource -modulename 'xADCSDeployment' -ModuleVersion  '1.4.0.0'
     Import-DSCResource -modulename 'xDnsServer' -ModuleVersion  '1.16.0.0'
+    Import-DscResource -ModuleName 'ExchangeDsc'
+    Import-DscResource -ModuleName 'xPendingReboot' -ModuleVersion "0.4.0.0"
 
 
 #endregion
@@ -132,6 +134,11 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
                 LogPath = $Node.DCLogPath
                 SysvolPath = $Node.SysvolPath
                 DependsOn = '[WindowsFeature]ADDomainServices'
+            }
+
+            xADForestProperties FirstDC {
+                ForestName                   = $Node.DomainName
+                UserPrincipalNameSuffixToAdd = "$($node.vanitydomain)"
             }
 
         #Add OU, Groups, and Users
@@ -798,6 +805,87 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
 
     } #end ADCS Config
 
+    node $Allnodes.Where({ 'Firefox' -in $_.Lability_Resource }).NodeName {
+        Script "InstallFirefox" {
+            GetScript            = { return @{ Result = "" } }
+            TestScript           = {
+                Test-Path -Path "C:\Program Files\Mozilla Firefox"
+            }
+            SetScript            = {
+                $process = Start-Process -FilePath "C:\Resources\Firefox-Latest.exe" -Wait -PassThru -ArgumentList @('-ms')
+                if ($process.ExitCode -ne 0) {
+                    throw "Firefox installer at $ffInstaller exited with code $($process.ExitCode)"
+                }
+            }
+            PsDscRunAsCredential = $Credential
+        }
+    }
+
+    node $Allnodes.Where({ 'UcmaRuntimeSetup' -in $_.Lability_Resource }).NodeName {
+        Script "InstallUcmaRuntimeSetup" {
+            GetScript            = { return @{ Result = "" } }
+            TestScript           = {
+                Test-Path -Path "C:\Program Files\Microsoft UCMA 4.0"
+            }
+            SetScript            = {
+                $process = Start-Process -FilePath "C:\Resources\UcmaRuntimeSetup.exe" -Wait -PassThru -ArgumentList @('-q')
+                if ($process.ExitCode -ne 0) {
+                    throw "UcmaRuntimeSetup installer at $ffInstaller exited with code $($process.ExitCode)"
+                }
+            }
+            PsDscRunAsCredential = $Credential
+        }
+    }
+
+    node $Allnodes.Where({ 'GoogleChrome' -in $_.Lability_Resource }).NodeName {
+        Script "InstallGoogleChrome" {
+            GetScript            = { return @{ Result = "" } }
+            TestScript           = {
+                Test-Path -Path "C:\Program Files\Google Chrome"
+            }
+            SetScript            = {
+                $process = Start-Process -FilePath "C:\Windows\System32\msiexec.exe" -Wait -PassThru -ArgumentList @('/i C:\Resources\googlechromestandaloneenterprise64.msi /Q')
+                if ($process.ExitCode -ne 0) {
+                    throw "Google Chrome installer at $ffInstaller exited with code $($process.ExitCode)"
+                }
+            }
+            PsDscRunAsCredential = $Credential
+        }
+    }
+
+    node $Allnodes.Where({ 'URLREWRITE' -in $_.Lability_Resource }).NodeName {
+        Script "InstallURLREWRITE" {
+            GetScript            = { return @{ Result = "" } }
+            TestScript           = {
+                Test-Path -Path "C:\Program Files\Google Chrome"
+            }
+            SetScript            = {
+                $process = Start-Process -FilePath "C:\Windows\System32\msiexec.exe" -Wait -PassThru -ArgumentList @('/i C:\Resources\rewrite_amd64_en-US.msi /Q')
+                if ($process.ExitCode -ne 0) {
+                    throw "URLREWRITE installer at $ffInstaller exited with code $($process.ExitCode)"
+                }
+            }
+            PsDscRunAsCredential = $Credential
+        }
+    }
+
+    node $Allnodes.Where({ 'Visual Studio 2013 x86' -in $_.Lability_Resource }).NodeName {
+        Script "Install" {
+            GetScript            = { return @{ Result = "" } }
+            TestScript           = {
+                Test-Path -Path "C:\Program Files\Google Chrome"
+            }
+            SetScript            = {
+                $process = Start-Process -FilePath "C:\Resources\vcredist_2013_x86.exe" -Wait -PassThru -ArgumentList @('-q')
+                if ($process.ExitCode -ne 0) {
+                    throw "URLREWRITE installer at $ffInstaller exited with code $($process.ExitCode)"
+                }
+            }
+            PsDscRunAsCredential = $Credential
+        }
+    }
+
+    
 } # End AllNodes
 #endregion
 

@@ -82,6 +82,20 @@ Configuration AutoLab {
 
         #endregion
 
+        #Region EdgeSettings
+
+        registry EdgeSettings {
+            Ensure    = "present"
+            Key       = 'HKLM:\Software\Policies\Microsoft\Edge'
+            ValueName = 'HideFirstRunExperience'
+            ValueData = '1'
+            ValueType = 'DWord'
+        }
+        
+        
+        
+        #endregion EdgeSettings
+
         #region Firewall Rules
 
         $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
@@ -228,7 +242,7 @@ Configuration AutoLab {
 
     } #end nodes DC
 
-    #endregion
+    #endregion Domain Controller config
 
     #region DHCP
     node $AllNodes.Where({ $_.Role -eq 'DHCP' }).NodeName {
@@ -275,7 +289,7 @@ Configuration AutoLab {
         #>
 
     } #end DHCP Config
-    #endregion
+    #endregion DHCP
 
     #region Web config
     node $AllNodes.Where({ $_.Role -eq 'Web' }).NodeName {
@@ -292,7 +306,7 @@ Configuration AutoLab {
         }
 
     }#end Web Config
-    #endregion
+    #endregion 
 
     #region DomainJoin config
     node $AllNodes.Where({ $_.Role -eq 'DomainJoin' }).NodeName {
@@ -818,6 +832,40 @@ Configuration AutoLab {
             Type = "file" 
         } #>
 
+        #Region MX PreReqs
+
+        Package UCMA {
+            Name = "UCMA"
+            Path = "C:\Resources\UcmaRuntimeSetup.exe"
+            Arguments = '-Q'
+            ReturnCode = 0
+            ProductId = 'A41CBE7D-949C-41DD-9869-ABBD99D753DA'
+        }
+
+        Package vcredist_2013_x64 {
+            Name = 'VCREDIST'
+            Path = "C:\Resources\vcredist_2013_x64.exe"
+            Arguments = '-Q'
+            ProductId = '010792BA-551A-3AC0-A7EF-0FAB4156C382'
+            ReturnCode = 0
+        }
+
+        Package vcredist_2013_x86 {
+            Name = 'VCREDIST_x86'
+            Path = "C:\Resources\vcredist_2013_x86.exe"
+            Arguments = '-Q'
+            ProductId = '13A4EE12-23EA-3371-91EE-EFB36DDFFF3E'
+            ReturnCode = 0
+        }
+
+        Package IISURLREWRITE {
+            Name = 'IISURLREWRITE'
+            Path = "C:\Resources\rewrite_amd64_en-US.msi"
+            ProductId = '9BCA2118-F753-4A1E-BCF3-5A820729965C'
+            ReturnCode = 0
+        }
+
+        #endRegion MX PreReqs
 
         xWaitForADDomain DscForestWaitchck {
             DomainName           = $Node.DomainName
@@ -880,7 +928,7 @@ Configuration AutoLab {
 
     }
 
-    #endregion 
+    #endregion ExchangeServer
 
 
     node $Allnodes.Where({ 'Firefox' -in $_.Lability_Resource }).NodeName {

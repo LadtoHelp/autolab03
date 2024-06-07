@@ -93,21 +93,35 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RDP = enables RDP and opens up required firewall rules
         DomainJoin = joions a computer to the domain
 #>
-        
+        @{
+            NodeName                = 'DC1'
+            IPAddress               = '192.168.3.10'
+            Role                    = @('DC', 'DHCP', 'ADCS')
+            Lability_BootOrder      = 10
+            Lability_BootDelay      = 300 # Number of seconds to delay before others
+            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Media          = '2019_x64_Standard_EN_Core_Eval'
+            Lability_MinimumMemory  = 2GB
+            Lability_ProcessorCount = 2
+            CustomBootStrap         = @'
+            # This must be set to handle larger .mof files
+            Set-Item -path wsman:\localhost\maxenvelopesize -value 1000
+'@
+        }
 
         @{
-            NodeName           = 'S1'
-            IPAddress          = '192.168.3.50'
+            NodeName                = 'S1'
+            IPAddress               = '192.168.3.50'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role               = @('DomainJoin', 'Web','ConfigMgr')
+            Role                    = @('DomainJoin', 'Web', 'ConfigMgr')
             Lability_MinimumMemory  = 6GB
             Lability_StartupMemory  = 6GB;
             Lability_ProcessorCount = 4
-            Lability_BootOrder = 20
-            Lability_Resource = @('SQL','MDT','ADKSETUP','ADKPESETUP','SQLSTUDIOMANAGMENT','CCMSETUPUPDATES')
-            Lability_timeZone  = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media     = '2022_x64_Standard_EN_Eval'
-            Lability_DvdDrive   = @{
+            Lability_BootOrder      = 20
+            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES')
+            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Media          = '2022_x64_Standard_EN_Eval'
+            Lability_DvdDrive       = @{
                 
                 ## This will not create a IDE/SCSI controller. Therefore, you must enusre
                 ## that the target controller already exists and does not already contain a disk
@@ -115,9 +129,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 ControllerLocation = 1;
                 ## Lability can resolve the ISO path using the built-in environment variables
                 ## NOTE: variable expansion is only available to Lability-specific node properties
-                Path = "C:\Users\lelvi\Downloads\SQLServer2019-x64-ENU.iso"; 
+                Path               = "C:\Users\lelvi\Downloads\SQLServer2019-x64-ENU.iso"; 
             }
-<#             xVMDvdDrive NewVMDvdDriveISO
+            <#             xVMDvdDrive NewVMDvdDriveISO
         {
             Ensure             = 'Present'
             VMName               = $VMName
@@ -129,7 +143,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
              #>
         }
 
-<#         @{
+        <#         @{
             NodeName                = 'Cli1'
             IPAddress               = '192.168.3.100'
             Role                    = @('domainJoin', 'RSAT', 'RDP')
@@ -194,90 +208,90 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 @{ Name = 'xDhcpServer'; RequiredVersion = '3.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xWindowsUpdate' ; RequiredVersion = '2.8.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xPSDesiredStateConfiguration'; RequiredVersion = '9.1.0'; Provider = 'PSGallery' },
-#                @{ Name = 'PSDesiredStateConfiguration'; RequiredVersion = '1.1'; Provider = 'PSGallery' },
+                #                @{ Name = 'PSDesiredStateConfiguration'; RequiredVersion = '1.1'; Provider = 'PSGallery' },
                 @{ Name = 'xADCSDeployment'; RequiredVersion = '1.4.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xDnsServer'; RequiredVersion = "1.16.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'ExchangeDsc'; RequiredVersion = "2.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'xPendingReboot'; RequiredVersion = "0.4.0.0" ; Provider = 'PSGallery' },
-                @{ Name = 'ConfigMgrCBDsc'; RequiredVersion = "3.0.0"; Provider = 'PSGallery'},
-                @{ Name = 'SqlServerDsc'; RequiredVersion =  "15.2.0";Provider = 'PSGallery' },
-                @{ Name = 'UpdateServicesDsc'; RequiredVersion =  "1.2.1";Provider = 'PSGallery' },
-                @{ Name = 'NetworkingDsc'; RequiredVersion =  "8.2.0";Provider = 'PSGallery' },
-                @{ Name = 'xHyper-V' ; RequiredVersion = '3.15.0.0'; Provider = 'PSGallery'}
+                @{ Name = 'ConfigMgrCBDsc'; RequiredVersion = "3.0.0"; Provider = 'PSGallery' },
+                @{ Name = 'SqlServerDsc'; RequiredVersion = "15.2.0"; Provider = 'PSGallery' },
+                @{ Name = 'UpdateServicesDsc'; RequiredVersion = "1.2.1"; Provider = 'PSGallery' },
+                @{ Name = 'NetworkingDsc'; RequiredVersion = "8.2.0"; Provider = 'PSGallery' },
+                @{ Name = 'xHyper-V' ; RequiredVersion = '3.15.0.0'; Provider = 'PSGallery' }
 
             )
             Resource    = @(
                 @{
-                    Id = 'Firefox'
+                    Id       = 'Firefox'
                     Filename = 'Firefox-Latest.exe'
-                    Uri = 'https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US'
+                    Uri      = 'https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US'
 
                 },
                 @{
-                    Id = 'UcmaRuntimeSetup'
+                    Id       = 'UcmaRuntimeSetup'
                     Filename = "UcmaRuntimeSetup.exe"
-                    Uri = 'https://download.microsoft.com/download/2/C/4/2C47A5C1-A1F3-4843-B9FE-84C0032C61EC/UcmaRuntimeSetup.exe'
+                    Uri      = 'https://download.microsoft.com/download/2/C/4/2C47A5C1-A1F3-4843-B9FE-84C0032C61EC/UcmaRuntimeSetup.exe'
 
                 },
                 @{
-                    Id = 'ADConnect'
+                    Id       = 'ADConnect'
                     FileName = 'AzureADConnect.msi'
-                    Uri = 'https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi'
+                    Uri      = 'https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi'
                 },
                 @{
-                    Id = 'Visual Studio 2013 x64'
+                    Id       = 'Visual Studio 2013 x64'
                     FileName = 'vcredist_2013_x64.exe'
-                    Uri = 'https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x64.exe'
+                    Uri      = 'https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x64.exe'
                 },
                 @{
-                    Id = 'Visual Studio 2013 x86'
+                    Id       = 'Visual Studio 2013 x86'
                     FileName = 'vcredist_2013_x86.exe'
-                    Uri = 'https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x86.exe'
+                    Uri      = 'https://download.visualstudio.microsoft.com/download/pr/10912041/cee5d6bca2ddbcd039da727bf4acb48a/vcredist_x86.exe'
                 },
                 @{
-                    Id = "GoogleChrome"
+                    Id       = "GoogleChrome"
                     FileName = "googlechromestandaloneenterprise64.msi"
-                    Uri = 'https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D%26iid%3D%7B671BD376-B7AB-C0FE-E1B6-A642ABF65A2B%7D%26lang%3Den%26browser%3D4%26usagestats%3D0%26appname%3DGoogle%2520Chrome%26needsadmin%3Dtrue%26ap%3Dx64-stable-statsdef_0%26brand%3DGCHC/dl/chrome/install/googlechromestandaloneenterprise64.msi'
+                    Uri      = 'https://dl.google.com/tag/s/appguid%3D%7B8A69D345-D564-463C-AFF1-A69D9E530F96%7D%26iid%3D%7B671BD376-B7AB-C0FE-E1B6-A642ABF65A2B%7D%26lang%3Den%26browser%3D4%26usagestats%3D0%26appname%3DGoogle%2520Chrome%26needsadmin%3Dtrue%26ap%3Dx64-stable-statsdef_0%26brand%3DGCHC/dl/chrome/install/googlechromestandaloneenterprise64.msi'
                 },
                 @{
-                    Id = 'URLREWRITE'
+                    Id       = 'URLREWRITE'
                     FileName = 'rewrite_amd64_en-US.msi'
-                    Uri = 'https://download.microsoft.com/download/1/2/8/128E2E22-C1B9-44A4-BE2A-5859ED1D4592/rewrite_amd64_en-US.msi'
+                    Uri      = 'https://download.microsoft.com/download/1/2/8/128E2E22-C1B9-44A4-BE2A-5859ED1D4592/rewrite_amd64_en-US.msi'
                 },
                 @{
-                    Id = 'SQL'
+                    Id              = 'SQL'
                     DestinationPath = '\Resources\SQL'
-                    FileName = 'SQLEXPR_x64_ENU.exe'
-                    Checksum = ''
+                    FileName        = 'SQLEXPR_x64_ENU.exe'
+                    Checksum        = ''
                 },
                 @{
-                    Id = "MDT"
+                    Id       = "MDT"
                     FileName = "MicrosoftDeploymentToolkit_x64.msi"
                     Checksum = ''
-                    Uri = 'https://download.microsoft.com/download/3/3/9/339BE62D-B4B8-4956-B58D-73C4685FC492/MicrosoftDeploymentToolkit_x64.msi'
+                    Uri      = 'https://download.microsoft.com/download/3/3/9/339BE62D-B4B8-4956-B58D-73C4685FC492/MicrosoftDeploymentToolkit_x64.msi'
                 },
                 @{
-                    Id = "ADKSETUP"
+                    Id       = "ADKSETUP"
                     FileName = "ADK.zip"
                     Checksum = ''
-                    Expand = $true
+                    Expand   = $true
                 },
                 @{
-                    ID = "ADKPESETUP"
+                    ID       = "ADKPESETUP"
                     FileName = "adkwinpesetup.exe"
                     Checksum = ''
                 },
                 @{
-                    ID = "SQLSTUDIOMANAGMENT"
+                    ID       = "SQLSTUDIOMANAGMENT"
                     FileName = "SSMS-Setup-ENU.exe"
-                    URI = "https://download.microsoft.com/download/b/9/7/b97061b9-9b9c-4bc7-86de-22b262c016d1/SSMS-Setup-ENU.exe"
+                    URI      = "https://download.microsoft.com/download/b/9/7/b97061b9-9b9c-4bc7-86de-22b262c016d1/SSMS-Setup-ENU.exe"
                     Checksum = ''
                 },
                 @{
-                    ID = "CCMSETUPUPDATES"
+                    ID       = "CCMSETUPUPDATES"
                     FileName = "CCMUpdates.zip"
                     Checksum = ''
-                    Expand = $true
+                    Expand   = $true
                 }
             )
         }

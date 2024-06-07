@@ -204,6 +204,26 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
             }
         }
 
+        xADUser LabAdmin {
+            DomainName = $Node.DomainName
+            UserName = 'LabAdmin'
+            Password = $DomainCredential
+
+        }
+
+
+        xADGroup AddLabAdmin {
+            GroupName = 'Domain Admins'
+            MembersToInclude = 'LabAdmin','Administrator'
+        }
+
+        xADGroup AddLabAdmintoEnt {
+            GroupName = 'Enterprise Admins'
+            MembersToInclude = 'LabAdmin','Administrator'
+        }
+
+        
+
     #prestage Web Server Computer objects
 
         [string[]]$WebServers = $Null
@@ -587,7 +607,7 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
             DependsOn = '[Script]setAEGPRegSetting3'
         }
 
-#region Create and publish templates
+    #region Create and publish templates
 
 #Note:  The Test section is pure laziness.  Future enhancement:  test for more than just existence.
         script CreateWebServer2Template
@@ -728,7 +748,7 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
          }
 
 
-#endregion - Create and publish templates
+    #endregion - Create and publish templates
 
 #region template permissions
 #Permission beginning with 0e10... is "Enroll".  Permission beginning with "a05b" is autoenroll.
@@ -887,6 +907,9 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         UserName = 'SCCM-SQLService'
         DomainAdministratorCredential = $DomainCredential
         Path = "OU=SCCM,$($node.DomainDN)"
+        PasswordNeverResets = $true
+        ChangePasswordAtLogon = $false
+        Password = $credential
     }
 
     xADGroup CreateSCCMGroup02 {
@@ -895,6 +918,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         MembersToInclude = @("SCCM-SQLService")
         Credential = $DomainCredential
         Path = "OU=SCCM,$($node.DomainDN)"
+        
         
     }
 
@@ -905,6 +929,9 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         UserName = 'SCCM-SQLAgent'
         DomainAdministratorCredential = $DomainCredential
         Path = "OU=SCCM,$($node.DomainDN)"
+        Password = $credential
+        PasswordNeverResets = $true
+        ChangePasswordAtLogon = $false
     }
     
     
@@ -913,7 +940,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
 
     
     
-<#     LocalConfigurationManager
+    <#     LocalConfigurationManager
     {
         RebootNodeIfNeeded = $true
     } #>
@@ -1010,7 +1037,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
 
     SQLSetup SCCMSqlInstall
     {
-        Features            = 'SQLEngine,RS,CONN,BC,TOOLS'
+        Features            = 'SQLEngine,RS,CONN,TOOLS'
         InstallSharedDir    = 'C:\Apps\Microsoft SQL Server'
         InstallSharedWowDir = 'C:\Apps (x86)\Microsoft SQL Server'
         InstanceDir         = 'C:\Apps\Microsoft SQL Server'
@@ -1021,7 +1048,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         RSSVCStartUpType    = 'Automatic'
         AgtSvcStartupType   = 'Automatic'
         SQLCollation        = 'SQL_Latin1_General_CP1_CI_AS'
-        SQLSysAdminAccounts = @("$($node.DomainNetBIOSNAME)\SCCM-Servers","$($node.DomainNetBIOSNAME)\Administrator","$($node.DomainNetBIOSNAME)\SCCM-CMInstall")
+        SQLSysAdminAccounts = @('NT Authority\System','Administrators',"$($node.DomainNetBIOSNAME)\SCCM-Servers","$($node.DomainNetBIOSNAME)\Administrator","$($node.DomainNetBIOSNAME)\SCCM-CMInstall","$($node.DomainNetBIOSNAME)\SCCM-SQLAgent")
         InstallSQLDataDir   = 'C:'
         SQLUserDBDir        = "C:\MSSQL12.$dbInstanceName\MSSQL\Data\App"
         SQLUserDBLogDir     = "C:\MSSQL12.$dbInstanceName\MSSQL\Log\App"
@@ -1029,8 +1056,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         SQLTempDBLogDir     = "C:\MSSQL12.$dbInstanceName\MSSQL\Log\System"
         SourcePath          = 'D:\'
         UpdateEnabled       = $false
-        DependsOn           = '[Firewall]AddSccmUdpFirewallRule'
-        
+        DependsOn           = '[Firewall]AddSccmUdpFirewallRule'        
 
     }
 
@@ -1048,8 +1074,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         Name = 'SSMS-Setup-ENU'
         Path = "C:\Resources\SSMS-Setup-ENU.exe"
         Arguments = "/install /passive /norestart"
-        ProductId = ''
-        ReturnCode = 1856439871
+        ProductId = '57c713b7-9c78-4dd1-bb13-3e618f6fb7c8'
     }
 
     # WSUS registry value to fix issues with WSUS self-signed certificates

@@ -206,7 +206,7 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
 
         xADUser LabAdmin {
             DomainName = $Node.DomainName
-            UserName = 'LabAdmin'
+            UserName = $node.labadmin
             Password = $DomainCredential
 
         }
@@ -214,12 +214,12 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
 
         xADGroup AddLabAdmin {
             GroupName = 'Domain Admins'
-            MembersToInclude = 'LabAdmin','Administrator'
+            MembersToInclude = "$($node.labadmin)",'Administrator'
         }
 
         xADGroup AddLabAdmintoEnt {
             GroupName = 'Enterprise Admins'
-            MembersToInclude = 'LabAdmin','Administrator'
+            MembersToInclude = "$($node.labadmin)",'Administrator'
         }
 
         
@@ -854,6 +854,8 @@ $LabData = Import-PowerShellDataFile -Path $psscriptroot\*.psd1
 
 node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
 
+    $SCCMADMINS = 'SCCM-ADMINS'
+
     $DomainCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\$($Credential.UserName)", $Credential.Password)
 
     <#     
@@ -922,6 +924,13 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         
     }
 
+    xADGroup CreateSCCMGroup03 {
+        GroupName = "$sccmadmins"
+        MembersToInclude = @("$($Node.labadmin)")
+        Credential = $DomainCredential
+        Path = "OU=SCCM,$($node.DomainDN)"
+    }
+
     $SccmInstallAccount = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\SCCM-SQLService", $Credential.Password)
     
     xADUser CreateSCCM-Agent {
@@ -950,7 +959,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
     }
 
     # Hard-coding params to allow tests to pass. Remove these
-    $ServerName = "S1.$($node.DomainName)"
+    $ServerName = "$($node.NodeName).$($node.DomainName)"
     $SiteCode = 'PRI'
     $SiteName = "$($node.DomainNetBIOSNAME)"
     $ConfigMgrVersion = 2010
@@ -992,7 +1001,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         InstallAdk             = $true
         InstallMdt             = $true
         AdkSetupExePath        = 'C:\Resources\ADKSETUP\ADK\adksetup.exe'
-        AdkWinPeSetupPath      = 'C:\Resources\adkwinpesetup.exe'
+        AdkWinPeSetupPath      = 'C:\Resources\ADKPESETUP\adkwinpesetup.exe'
         MdtMsiPath             = 'C:\Resources\MicrosoftDeploymentToolkit_x64.msi'
         InstallWindowsFeatures = $true
         WindowsFeatureSource   = 'C:\Windows\WinSxS'
@@ -1037,9 +1046,9 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
 
     SQLSetup SCCMSqlInstall
     {
-        Features            = 'SQLEngine,RS,CONN,TOOLS'
+        Features            = 'SQLEngine,CONN,BC'
         InstallSharedDir    = 'C:\Apps\Microsoft SQL Server'
-        InstallSharedWowDir = 'C:\Apps (x86)\Microsoft SQL Server'
+        InstallSharedWowDir = 'C:\Apps (x86)\Microsoft SQL Server'          
         InstanceDir         = 'C:\Apps\Microsoft SQL Server'
         InstanceName        = $dbInstanceName
         SQLSvcAccount       = $SccmInstallAccount
@@ -1048,7 +1057,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         RSSVCStartUpType    = 'Automatic'
         AgtSvcStartupType   = 'Automatic'
         SQLCollation        = 'SQL_Latin1_General_CP1_CI_AS'
-        SQLSysAdminAccounts = @('NT Authority\System','Administrators',"$($node.DomainNetBIOSNAME)\SCCM-Servers","$($node.DomainNetBIOSNAME)\Administrator","$($node.DomainNetBIOSNAME)\SCCM-CMInstall","$($node.DomainNetBIOSNAME)\SCCM-SQLAgent")
+        SQLSysAdminAccounts = @("$($node.DomainNetBIOSNAME)\$($node.LabAdmin)",'NT Authority\System','Administrators',"$($node.DomainNetBIOSNAME)\SCCM-Servers","$($node.DomainNetBIOSNAME)\Administrator","$($node.DomainNetBIOSNAME)\SCCM-CMInstall","$($node.DomainNetBIOSNAME)\SCCM-SQLAgent")
         InstallSQLDataDir   = 'C:'
         SQLUserDBDir        = "C:\MSSQL12.$dbInstanceName\MSSQL\Data\App"
         SQLUserDBLogDir     = "C:\MSSQL12.$dbInstanceName\MSSQL\Log\App"
@@ -1060,6 +1069,16 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
 
     }
 
+ <##>
+    #SQL REPORTING
+    Package SQLReporting {
+        Name = 'SQL Server Reporting'
+        Path = "C:\Resources\SQLServerReportingServices.exe"
+        Arguments = '/quiet /iacceptlicenseterms /Edition=eval'
+        ProductId = "9F07B820-F1E6-480E-AFE1-D2ABB2F7D650"
+        DependsOn   = '[SQLSetup]SCCMSqlInstall'
+    }
+#>
     SqlServerNetwork EnableTcpIp
     {
         InstanceName   = $dbInstanceName
@@ -1128,7 +1147,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         RoleCommunicationProtocol = 'HTTPorHTTPS'
         ClientsUsePKICertificate  = $true
         PreRequisiteComp          = $true
-        PreRequisitePath          = 'C:\temp\SCCMInstall\Downloads'
+        PreRequisitePath          = 'C:\Resources\CCMSETUPUPDATES'
         AdminConsole              = $true
         JoinCeip                  = $false
         MobileDeviceLanguage      = $false
@@ -1350,7 +1369,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
     CMBoundaries DemoBoundary
     {
         SiteCode             = $SiteCode
-        DisplayName          = 'Contoso Boundary'
+        DisplayName          = "$($Node.DomainNetBIOSNAME) Boundary"
         Value                = '10.10.1.1-10.10.1.254'
         Type                 = 'IPRange'
         PsDscRunAsCredential = $SccmInstallAccount
@@ -1360,7 +1379,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
     CMBoundaryGroups DemoBoundaryGroup
     {
         SiteCode             = $SiteCode
-        BoundaryGroup        = 'Contoso BoundaryGroup'
+        BoundaryGroup        = "$($Node.DomainNetBIOSNAME) BoundaryGroup"
         Boundaries           = @(
             DSC_CMBoundaryGroupsBoundaries
             {
@@ -1376,7 +1395,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
     CMAdministrativeUser SiteAdmins
     {
         SiteCode        = $SiteCode
-        AdminName       = 'Contoso\SCCM-SiteAdmins'
+        AdminName       = "$($node.domainname)\$($SCCMADMINS)"
         RolesToInclude  = 'Full Administrator'
         ScopesToInclude = 'All'
         Ensure          = 'Present'
@@ -1433,7 +1452,7 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
         SiteServerName          = $ServerName
         Description             = 'Standard Distribution Point'
         MinimumFreeSpaceMB      = 100
-        BoundaryGroups          = @('Contoso BoundaryGroup')
+        BoundaryGroups          = @("$($Node.DomainNetBIOSNAME) BoundaryGroup")
         BoundaryGroupStatus     = 'Add'
         AllowPrestaging         = $false
         EnableAnonymous         = $true
@@ -1522,6 +1541,12 @@ node $AllNodes.Where({$_.Role -eq 'ConfigMgr'}).NodeName {
             '[CMBoundaryGroups]DemoBoundaryGroup','[CMAdministrativeUser]SiteAdmins','[CMCollectionMembershipEvaluationComponent]CollectionSettings',
             '[CMStatusReportingComponent]StatusReportingSettings','[Registry]MaxHWMifSize','[CMDistributionPointGroupMembers]DPGroupMembers','[CMManagementPoint]MPInstall',
             '[CMSoftwareUpdatePoint]SUPInstall','[CMEmailNotificationComponent]EmailSettings','[CMSoftwareUpdatePointComponent]SUPComponent'
+    }
+
+    File CompletedFile {
+        DestinationPath = "C:\SCCM-COMPLETE.txt"
+        DependsOn = "[Script]RebootAfterSCCMConfigurationInstall"
+
     }
 
 

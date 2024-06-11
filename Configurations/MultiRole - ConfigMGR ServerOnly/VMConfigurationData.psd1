@@ -82,6 +82,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
             SecureBoot                  = $false
             Lability_Media              = '2016_x64_Standard_Core_EN_Eval'
 
+            #Additional Admin
+            LabAdmin                    = 'LabAdmin'
+
         }
 
         <#    Available Roles for computers
@@ -93,7 +96,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RDP = enables RDP and opens up required firewall rules
         DomainJoin = joions a computer to the domain
 #>
-        @{
+        <#  @{
             NodeName                = 'DC1'
             IPAddress               = '192.168.3.10'
             Role                    = @('DC', 'DHCP', 'ADCS')
@@ -108,7 +111,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Set-Item -path wsman:\localhost\maxenvelopesize -value 1000
 '@
         }
-
+ #>
         @{
             NodeName                = 'S1'
             IPAddress               = '192.168.3.50'
@@ -118,7 +121,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_StartupMemory  = 6GB;
             Lability_ProcessorCount = 4
             Lability_BootOrder      = 20
-            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES')
+            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services')
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_DvdDrive       = @{
@@ -143,9 +146,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
              #>
         }
 
-        <#         @{
+        @{
             NodeName                = 'Cli1'
-            IPAddress               = '192.168.3.100'
+            #IPAddress               = '192.168.3.100'
             Role                    = @('domainJoin', 'RSAT', 'RDP')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
@@ -278,8 +281,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 },
                 @{
                     ID       = "ADKPESETUP"
-                    FileName = "adkwinpesetup.exe"
+                    FileName = "ADKWinPEAddons.zip"
                     Checksum = ''
+                    Expand   = $true
                 },
                 @{
                     ID       = "SQLSTUDIOMANAGMENT"
@@ -292,6 +296,11 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     FileName = "CCMUpdates.zip"
                     Checksum = ''
                     Expand   = $true
+                },
+                @{
+                    ID       = "Microsoft SQL Server Reporting Services"
+                    FileName = "SQLServerReportingServices.exe"
+                    Checksum = ''
                 }
             )
         }

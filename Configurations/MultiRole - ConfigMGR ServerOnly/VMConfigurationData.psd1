@@ -37,8 +37,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             )
 
             # Domain and Domain Controller information
-            DomainName                  = "Company.Pri"
-            DomainDN                    = "DC=Company,DC=Pri"
+            DomainName                  = "corp.iconwater.com.au"
+            DomainDN                    = "DC=CORP,DC=ICONWATER,DC=COM,DC=AU"
             DCDatabasePath              = "C:\NTDS"
             DCLogPath                   = "C:\NTDS"
             SysvolPath                  = "C:\Sysvol"
@@ -46,10 +46,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
             PSDscAllowDomainUser        = $true
             
             # vanitydomain
-            Vanitydomain                = "company.com"
+            Vanitydomain                = "iconwater.com.au"
 
             # AD NETBIOSNAME
-            DomainNetBIOSNAME           = "COMPANY"
+            DomainNetBIOSNAME           = "IWL"
 
             # DHCP Server Data
             DHCPName                    = 'LabNet'
@@ -64,8 +64,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             DHCPRouter                  = '192.168.3.1'
 
             # ADCS Certificate Services information
-            CACN                        = 'Company.Pri'
-            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=Company"
+            CACN                        = 'corp.iconwater.com.au'
+            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=IWL"
             CADatabasePath              = "C:\windows\system32\CertLog"
             CALogPath                   = "C:\CA_Logs"
             ADCSCAType                  = 'EnterpriseRootCA'
@@ -96,7 +96,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RDP = enables RDP and opens up required firewall rules
         DomainJoin = joions a computer to the domain
 #>
-        <#  @{
+        #<#  
+        @{
             NodeName                = 'DC1'
             IPAddress               = '192.168.3.10'
             Role                    = @('DC', 'DHCP', 'ADCS')
@@ -148,7 +149,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
 
         @{
             NodeName                = 'Cli1'
-            #IPAddress               = '192.168.3.100'
+            IPAddress               = '192.168.3.100'
             Role                    = @('domainJoin', 'RSAT', 'RDP')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
@@ -216,7 +217,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 @{ Name = 'xDnsServer'; RequiredVersion = "1.16.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'ExchangeDsc'; RequiredVersion = "2.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'xPendingReboot'; RequiredVersion = "0.4.0.0" ; Provider = 'PSGallery' },
-                @{ Name = 'ConfigMgrCBDsc'; RequiredVersion = "3.0.0"; Provider = 'PSGallery' },
+                @{ Name = 'ConfigMgrCBDsc'; RequiredVersion = "4.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'SqlServerDsc'; RequiredVersion = "15.2.0"; Provider = 'PSGallery' },
                 @{ Name = 'UpdateServicesDsc'; RequiredVersion = "1.2.1"; Provider = 'PSGallery' },
                 @{ Name = 'NetworkingDsc'; RequiredVersion = "8.2.0"; Provider = 'PSGallery' },

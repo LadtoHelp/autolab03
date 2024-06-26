@@ -164,6 +164,12 @@ Configuration AutoLab {
             UserPrincipalNameSuffixToAdd = "$($node.vanitydomain)"
         }
 
+        xADReplicationSubnet Site {
+            Name     = "192.168.3.0/24"
+            Site     = 'Default-First-Site-Name'
+            Location = 'Location'
+        }
+
         #Add OU, Groups, and Users
         $OUs = (Get-Content $PSScriptRoot\AD-OU.json | ConvertFrom-Json)
         $Users = (Get-Content $PSScriptRoot\AD-Users.json | ConvertFrom-Json)
@@ -222,12 +228,17 @@ Configuration AutoLab {
 
 
         xADGroup AddLabAdmin {
-            GroupName        = 'Domain Admins'
+            GroupName        = 'Administrators'
             MembersToInclude = "$($node.labadmin)", 'Administrator'
         }
 
         xADGroup AddLabAdmintoEnt {
             GroupName        = 'Enterprise Admins'
+            MembersToInclude = "$($node.labadmin)", 'Administrator'
+        }
+
+        xADGroup AddLabAdmintoSchemaAdmins {
+            GroupName        = 'Schema Admins'
             MembersToInclude = "$($node.labadmin)", 'Administrator'
         }
 
@@ -456,9 +467,31 @@ Configuration AutoLab {
 
             } #set
 
-        } #rsat script resource
+        } #rsat script resource 
 
-    } 
+        Script RemoveOptionalFeatures {
+
+            TestScript = {
+                $Status = Get-WmiObject Win32_OptionalFeature -Filter "Name='Internet-Explorer-Optional-amd64'"
+                if ($Status.Installstate -eq 1) {
+                    return $false
+                }
+                else {
+                    Return $true
+                }
+            }
+            SetScript  = {
+                saps dism.exe -ArgumentList '/online /Remove-Capability /CapabilityName:"Browser.InternetExplorer~~~~0.0.11.0"'
+            }
+            GetScript  = {
+                Return "SCRIPT FOR RemoveOptionalFeatures"
+            }
+            Credential = $credential
+        }
+    }
+
+
+
     #endregion RSAT Config
 
     #region RDP config
@@ -885,6 +918,8 @@ Configuration AutoLab {
 
         $DomainCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\$($Credential.UserName)", $Credential.Password)
 
+        $DomainCredential2 = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\$($Credential.UserName)", $Credential.Password)
+
         <#     
     xvmdvddrive AddISO {
 
@@ -914,7 +949,7 @@ Configuration AutoLab {
         xADGroup CreateSCCMGroup {
             GroupName        = "sccm-servers"
             Ensure           = 'Present'
-            MembersToInclude = "CN=S1,OU=Servers,DC=Company,DC=Pri"
+            MembersToInclude = "CN=S1,OU=Servers,$($Node.DomainDN)"
             Credential       = $DomainCredential
             Path             = $SCCMOU
             DependsOn        = "[xADOrganizationalUnit]CreateSCCM_OU"
@@ -974,7 +1009,81 @@ Configuration AutoLab {
     
         $sccmSQLAGENTAccount = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\SCCM-SQLAgent", $Credential.Password)
 
+        #Extend Schema
+        
 
+        Script ExtendSchema {
+            
+            Credential = $DomainCredential
+            
+            SetScript  = {
+                # Load the AD module
+                Import-Module ActiveDirectory
+
+                # Figure out our domain
+                $root = (Get-ADRootDSE).defaultNamingContext
+
+                # Get or create the System Management container
+                $ou = $null
+                try {
+                    $ou = New-ADObject -Type Container -name "System Management" -Path "CN=System,$root" -Passthru
+                
+                    $ou = Get-ADObject "CN=System Management,CN=System,$root"
+                }
+                catch {
+                    Write-Verbose "System Management container does not currently exist."
+                }
+
+                if ($ou -eq $null) {
+                    $ou = New-ADObject -Type Container -name "System Management" -Path "CN=System,$root" -Passthru
+                }
+
+
+
+                # Get the current ACL for the OU
+                $acl = get-acl "ad:CN=System Management,CN=System,$root"
+
+                # Get the computer's SID
+                $computer = get-adcomputer $env:ComputerName
+                $sid = [System.Security.Principal.SecurityIdentifier] $computer.SID
+
+                # Create a new access control entry to allow access to the OU
+                $ace = new-object System.DirectoryServices.ActiveDirectoryAccessRule $sid, "GenericAll", "Allow", "All"
+
+                # Add the ACE to the ACL, then set the ACL to save the changes
+                $acl.AddAccessRule($ace)
+                Set-acl -aclobject $acl "ad:CN=System Management,CN=System,$root"
+                $sw = New-Object System.IO.StreamWriter("C:\Temp\TestFile.txt")
+                $sw.WriteLine("Some sample string")
+                $sw.Close()
+            }
+            TestScript = { 
+                #Test-Path "C:\Temp\TestFile.txt"
+                Import-Module ActiveDirectory
+
+                # Figure out our domain
+                #$root = (Get-ADRootDSE).defaultNamingContext
+                #$ou = Get-ADObject "CN=System Management,CN=System,$root"
+
+                try {
+                    $OUName = 'System Management'
+                    $Filter = "(&(objectCategory=container)(name=$OUName))" 
+                    $dn = New-Object System.DirectoryServices.DirectoryEntry ("LDAP://corp.iconwater.com.au")
+                    $Searcher = New-Object System.DirectoryServices.DirectorySearcher($dn)
+                    $Searcher.Filter = $Filter 
+                    $ADUserPath = $Searcher.FindOne() 
+                    $ou = $ADUserPath.GetDirectoryEntry()
+                }
+                Catch {}
+                if ($ou) {
+                    Return $True
+                } 
+                Else {
+                    Return $false
+                }
+            }
+            GetScript  = { @{ Result = (Get-Content C:\Temp\TestFile.txt) } }
+        }
     
     
         <#     LocalConfigurationManager
@@ -990,7 +1099,7 @@ Configuration AutoLab {
         $ServerName = "$($node.NodeName).$($node.DomainName)"
         $SiteCode = 'PRI'
         $SiteName = "$($node.DomainNetBIOSNAME)"
-        $ConfigMgrVersion = 2010
+        $ConfigMgrVersion = 2403
         $CMAccounts = @(
             New-Object System.Management.Automation.PSCredential("$($node.DomainNetBIOSNAME)\SCCM-Network", $(Convertto-SecureString -AsPlainText -String 'Generic' -Force))
             New-Object System.Management.Automation.PSCredential("$($node.DomainNetBIOSNAME)\SCCM-ClientPush", $(Convertto-SecureString -AsPlainText -String 'Generic' -Force))
@@ -1113,6 +1222,15 @@ Configuration AutoLab {
             Path      = "C:\Resources\SSMS-Setup-ENU.exe"
             Arguments = "/install /passive /norestart"
             ProductId = '57c713b7-9c78-4dd1-bb13-3e618f6fb7c8'
+        }
+
+        Package InstallODBC {
+            Name      = 'Microsoft ODBC Driver 18 for SQL Server'
+            Path      = "C:\Resources\SQL\msodbcsql_18_x64.msi"
+            Arguments = "IACCEPTMSODBCSQLLICENSETERMS=YES"
+            ProductId = '3C6CE53F-AF0C-4CC3-9A7E-4E7909FA4EF7'
+            DependsOn = '[Package]InstallSSMS'
+
         }
 
         # WSUS registry value to fix issues with WSUS self-signed certificates
@@ -1245,7 +1363,7 @@ Configuration AutoLab {
 
         CMForestDiscovery CreateForestDiscovery {
             SiteCode             = $SiteCode
-            Enabled              = $false
+            Enabled              = $true
             PsDscRunAsCredential = $SccmInstallAccount
             DependsOn            = '[Script]RebootAfterSccmSetup'
         }
@@ -1376,7 +1494,7 @@ Configuration AutoLab {
             BoundaryGroup        = "$($Node.DomainNetBIOSNAME) BoundaryGroup"
             Boundaries           = @(
                 DSC_CMBoundaryGroupsBoundaries {
-                    Value = '10.10.1.1-10.10.1.254'
+                    Value = '192.168.3.1-192.168.3.254'
                     Type  = 'IPRange'
                 }
             )
@@ -1507,6 +1625,12 @@ Configuration AutoLab {
             FeatureUpdateMaxRuntimeMins             = 300
             NonFeatureUpdateMaxRuntimeMins          = 300
             DependsOn                               = '[CMSoftwareUpdatePoint]SUPInstall'
+        }
+
+        CMServiceConnectionPoint Install {
+            SiteCode       = $SiteCode
+            SiteServerName = $ServerName
+            Mode           = "Online"
         }
 
         Script RebootAfterSCCMConfigurationInstall {

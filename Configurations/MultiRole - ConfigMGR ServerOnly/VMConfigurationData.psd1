@@ -96,7 +96,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RDP = enables RDP and opens up required firewall rules
         DomainJoin = joions a computer to the domain
 #>
-        #<#  
+        <#  
         @{
             NodeName                = 'DC1'
             IPAddress               = '192.168.3.10'
@@ -122,7 +122,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_StartupMemory  = 6GB;
             Lability_ProcessorCount = 4
             Lability_BootOrder      = 20
-            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services')
+            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services','Microsoft ODBC Driver 18 for SQL Server (x64)')
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_DvdDrive       = @{
@@ -293,17 +293,40 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     Checksum = ''
                 },
                 @{
-                    ID       = "CCMSETUPUPDATES"
-                    FileName = "CCMUpdates.zip"
-                    Checksum = ''
-                    Expand   = $true
+                    ID              = "CCMSETUPUPDATES"
+                    FileName        = "CCMUpdates.zip"
+                    Checksum        = ''
+                    Expand          = $true
                 },
                 @{
-                    ID       = "Microsoft SQL Server Reporting Services"
-                    FileName = "SQLServerReportingServices.exe"
-                    Checksum = ''
+                    ID              = "Microsoft SQL Server Reporting Services"
+                    FileName        = "SQLServerReportingServices.exe"
+                    Checksum        = ''
+                },
+                @{
+                    ID              =  'Microsoft ODBC Driver 18 for SQL Server (x64)'
+                    DestinationPath = '\Resources\SQL'
+                    FileName        = "msodbcsql_18_x64.msi"
+                    Checksum        = ''
+                    URI             = "https://download.microsoft.com/download/4/f/e/4fed6f4b-dc42-4255-b4b4-70f8e2a35a63/en-US/18.3.3.1/x64/msodbcsql.msi"
+                    
+
+
+                },
+                @{
+                    ID              = 'Microsoft Entra Connect'
+                    DestinationPath = '\Resources\EntraConnect'
+                    Filename        = "AzureADConnect.msi"
+                    URI             = 'https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi'
+                    Checksum        = ''
                 }
+
+
+
             )
+
+
+
         }
     }
 }

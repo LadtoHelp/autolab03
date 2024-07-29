@@ -27,7 +27,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             AddressFamily               = 'IPv4'
             IPNetwork                   = '192.168.3.0/24'
             IPNatName                   = 'LabNat'
-            DnsServerAddress            = '192.168.3.20'
+            DnsServerAddress            = '192.168.3.25'
 
             # Firewall settings to enable
             FirewallRuleNames           = @(
@@ -44,7 +44,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
             SysvolPath                  = "C:\Sysvol"
             PSDscAllowPlainTextPassword = $true
             PSDscAllowDomainUser        = $true
-            DomainNameChild             = "actewagl.local"
+            DomainNameChild             = "actewagl"
+            DomainDNChild               = "DC=actewagl,DC=production,DC=com,DC=au"
+            TrustDomain                 = 'corp.iconwater.com.au'
+            TrustDomainDNSServer        = '192.168.3.10'
 
             # DHCP Server Data
             DHCPName                    = 'LabNet'
@@ -127,48 +130,67 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
 #>
         @{
             NodeName                = 'DC1PRODUCTION'
-            IPAddress               = '192.168.3.20'
-            Role                    = @('DC', 'ADCS','RDP')
+            IPAddress               = '192.168.3.25'
+            Role                    = @('DC', 'ADCS', 'RDP')
             Lability_BootOrder      = 10
-            Lability_BootDelay      = 600 # Number of seconds to delay before others
+            Lability_BootDelay      = 300 # Number of seconds to delay before others
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media          = '2022_x64_Standard_EN_Eval'
-            lability_startupmemory  = 4GB
-            Lability_ProcessorCount = 3
+            Lability_Media          = '2022_x64_Standard_EN_Core_Eval'
+            lability_startupmemory  = 2GB
+            Lability_ProcessorCount = 2
             CustomBootStrap         = @'
                     # This must be set to handle larger .mof files
                     Set-Item -path wsman:\localhost\maxenvelopesize -value 1000
 '@
-        }
+        } 
 
-         @{
-            NodeName               = 'DC1ACTEW'
-            IPAddress              = '192.168.3.21'
-            DnsServerAddress       = '192.168.3.20'
+        @{
+            NodeName                = 'DC1ACTEW'
+            IPAddress               = '192.168.3.30'
+            DnsServerAddress        = '192.168.3.25'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role                   = @( 'Web','RSAT','RSAT-DHCP','DCCHILD')
-            Lability_BootOrder     = 20
-            lability_startupmemory = 4GB
-            Lability_timeZone      = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media         = '2019_x64_Standard_EN_CORE_Eval'
-            Lability_ProcessorCount = 2
-           <#  CustomBootStrap         = @'
+            Role                    = @( 'Web', 'RSAT', 'RSAT-DHCP', 'DCCHILD')
+            Lability_BootOrder      = 20
+            lability_startupmemory  = 2GB
+            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Media          = '2022_x64_Standard_EN_CORE_Eval'
+            Lability_ProcessorCount = 1
+            CustomBootStrap         = @'
                     # To enable PSRemoting on the client
                     Enable-PSRemoting -SkipNetworkProfileCheck -Force;
                     Set-Item -path wsman:\localhost\maxenvelopesize -value 1000 ;
                     Install-WindowsFeature -name AD-Domain-Services -IncludeManagementTools ;
                     Install-WindowsFeature -name RSAT-Role-Tools -IncludeManagementTools -IncludeAllSubFeature ;
-                    ping dc1production.production.com.au | Out-file -append C:\test.log;
+                    MD C:\temp ;
+                    ping dc1production.production.com.au | Out-file -append C:\temp\test.log;
                     $User = "production\administrator" ;
                     $PWord = ConvertTo-SecureString -String "P@ssw0rd" -AsPlainText -Force ; 
                     $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $PWord ;
                     Import-Module ADDSDeployment ;
-                    Install-ADDSDomain -SafeModeAdministratorPassword $Pword -Credential $Credential -NewDomainName "actewagl" -ParentDomainName "production.com.au" -InstallDNS -CreateDNSDelegation -DomainMode 7 -ReplicationSourceDC "DC1production.production.com.au"  -DatabasePath "C:\Windows\NTDS" -NewDomainNetbiosName "actew" -Confirm:$False -verbose | Out-file -append C:\test.log;
-                    MD C:\temp ;
+                    #Install-ADDSDomain -SafeModeAdministratorPassword $Pword -Credential $Credential -NewDomainName "actewagl" -ParentDomainName "production.com.au" -InstallDNS -CreateDNSDelegation -DomainMode 7 -ReplicationSourceDC "DC1production.production.com.au"  -DatabasePath "C:\Windows\NTDS" -NewDomainNetbiosName "actew" -Confirm:$False -verbose | Out-file -append C:\test.log;
                     Invoke-webrequest -uri https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi -OutFile C:\temp\azureadconnect.msi -UseBasicParsing
-'@ #>
+'@ 
         }
+        @{
+            NodeName                = 'SRV1ACTEW'
+            IPAddress               = '192.168.3.35'
+            DnsServerAddress        = '192.168.3.25'
+            Role                    = @( 'DomainJoinChild', 'RSAT', 'ADConnect')
+            Lability_BootOrder      = 20
+            lability_startupmemory  = 2GB
+            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Media          = '2022_x64_Standard_EN_Eval'
+            Lability_ProcessorCount = 2
+            Lability_Resource       = @(
+                'ADConnect'
+            )
+            CustomBootStrap         = @'
+                    # To enable PSRemoting on the client
+                    Enable-PSRemoting -SkipNetworkProfileCheck -Force;
+'@
 
+        }
+        <#
         @{
             NodeName               = 'DC1AWS'
             IPAddress              = '192.168.3.22'
@@ -234,13 +256,17 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
                     -Force:$true | Out-file -append C:\test.log;
                     MD C:\temp ;
                     Invoke-webrequest -uri https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi -OutFile C:\temp\azureadconnect.msi -UseBasicParsing
-'@ #>
-        }
+'@ 
+
+        } 
+        
+        #>
 
         @{
-            NodeName                = 'Cli1ACTEW'
+            NodeName                = 'SOE001'
             IPAddress               = '192.168.3.101'
-            Role                    = @('RSAT', 'RDP')
+            DnsServerAddress        = '192.168.3.30'
+            Role                    = @('RSAT', 'RDP','DomainJoinChild')
             Lability_ProcessorCount = 2
             lability_startupmemory  = 4GB
             Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
@@ -265,7 +291,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
             # See https://github.com/pluralsight/PS-AutoLab-Env/blob/master/Detailed-Setup-Instructions.md
             # for more information.
 
-            #EnvironmentPrefix = 'AutoLab-'
+            EnvironmentPrefix = 'Actew-'
             Media       = (
                 @{
                     <#
@@ -299,6 +325,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
             DSCResource = @(
                 ## Download published version from the PowerShell Gallery or Github
                 @{ Name = 'xActiveDirectory'; RequiredVersion = "3.0.0.0"; Provider = 'PSGallery' },
+                #@{ Name = 'ActiveDirectoryDsc'; RequiredVersion = "6.5.0"; Provider = 'PSGallery' },
                 @{ Name = 'xComputerManagement'; RequiredVersion = '4.1.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xNetworking'; RequiredVersion = '5.7.0.0'; Provider = 'PSGallery' },
                 @{ Name = 'xDhcpServer'; RequiredVersion = '3.0.0'; Provider = 'PSGallery' },
@@ -310,11 +337,23 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
             )
             Resource    = @(
                 @{
-                    Id = 'Firefox'
+                    Id       = 'Firefox'
                     Filename = 'Firefox-Latest.exe'
-                    Uri = 'https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US'
+                    Uri      = 'https://download.mozilla.org/?product=firefox-latest-ssl&os=win64&lang=en-US'
                 
 
+                },
+                @{
+                    Id = 'ADConnect'
+                    FileName = 'AzureADConnect.msi'
+                    Uri = 'https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi'
+                    
+                },
+                @{
+                    ID              = 'Microsoft Edge'
+                    DestinationPath = '\Resources\Edge'
+                    FileName        = 'MicrosoftEdgeEnterpriseX64.msi'
+                    URI             = 'https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/a2662b5b-97d0-4312-8946-598355851b3b/MicrosoftEdgeEnterpriseX64.msi'
                 }
             )
         }

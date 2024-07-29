@@ -25,10 +25,10 @@ Configuration AutoLab {
     Import-DscResource -ModuleName xHyper-V -ModuleVersion 3.15.0.0
 
 
-    #endregion
+    #endregion DSC Resources
+
     #region All Nodes
     node $AllNodes.Where({ $true }).NodeName {
-        #endregion
         #region LCM configuration
 
         LocalConfigurationManager {
@@ -39,7 +39,7 @@ Configuration AutoLab {
             ConfigurationModeFrequencyMins = 15
         }
 
-        #endregion
+        #endregion LCM configuration
 
         #region TLS Settings in registry
 
@@ -51,7 +51,30 @@ Configuration AutoLab {
             ValueType = 'DWord'
         }
 
-        #endregion
+        registry TLSv2050727 {
+            Ensure    = "present"
+            Key       = 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NetFramework\v2.0.50727'
+            ValueName = 'SchUseStrongCrypto'
+            ValueData = '1'
+            ValueType = 'DWord'
+        }
+
+        registry TLS64bit {
+            Ensure    = "present"
+            Key       = 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319'
+            ValueName = 'SchUseStrongCrypto'
+            ValueData = '1'
+            ValueType = 'DWord'
+        }
+
+        registry TLSv205072732764bit {
+            Ensure    = "present"
+            Key       = 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v2.0.50727'
+            ValueName = 'SchUseStrongCrypto'
+            ValueData = '1'
+            ValueType = 'DWord'
+        }
+        #endregion TLS Settings in registry
 
         registry Edge_FirstRun {
             Key       = "HKLM:\Software\Policies\Microsoft\Edge"
@@ -93,7 +116,7 @@ Configuration AutoLab {
             }
         } #End IF
 
-        #endregion
+        #endregion IPaddress settings
 
         #region Firewall Rules
 
@@ -115,8 +138,15 @@ Configuration AutoLab {
         }
         #>
     
+        Package MicrosoftEdgex64 {
+            Name       = 'Microsoft Edge'
+            Path       = "C:\Resources\MicrosoftEdgeEnterpriseX64.msi"
+            ProductId  = '51DBE763-E9CF-3A77-85F1-F674E025313E'
+            ReturnCode = 0
+        }
+    
     } #end Firewall Rules
-    #endregion
+    #endregion All Nodes
 
     #region Domain Controller config
 
@@ -279,7 +309,7 @@ Configuration AutoLab {
 
     } #end nodes DC
 
-    #endregion
+    #endregion Domain Controller config
 
     #region DHCP
     node $AllNodes.Where({ $_.Role -eq 'DHCP' }).NodeName {

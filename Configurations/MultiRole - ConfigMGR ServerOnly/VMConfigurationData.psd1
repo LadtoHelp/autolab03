@@ -122,7 +122,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_StartupMemory  = 6GB;
             Lability_ProcessorCount = 4
             Lability_BootOrder      = 20
-            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services','Microsoft ODBC Driver 18 for SQL Server (x64)')
+            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services','Microsoft ODBC Driver 18 for SQL Server (x64)','Microsoft Entra Connect')
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_DvdDrive       = @{
@@ -319,6 +319,12 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     Filename        = "AzureADConnect.msi"
                     URI             = 'https://download.microsoft.com/download/B/0/0/B00291D0-5A83-4DE7-86F5-980BC00DE05A/AzureADConnect.msi'
                     Checksum        = ''
+                },
+                @{
+                    ID              = 'Microsoft Edge'
+                    DestinationPath = '\Resources\Edge'
+                    FileName        = 'MicrosoftEdgeEnterpriseX64.msi'
+                    URI             = 'https://go.microsoft.com/fwlink/?LinkID=2093437'
                 }
 
 

@@ -127,7 +127,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
         @{
             NodeName                = 'DC1-Fabrikam'
             IPAddress               = '192.168.3.20'
-            Role                    = @('DC', 'DHCP', 'ADCS')
+            Role                    = @('DC', 'ADCS')
             Lability_BootOrder      = 10
             Lability_BootDelay      = 60 # Number of seconds to delay before others
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
@@ -160,13 +160,13 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
             Lability_StartupMemory  = 1GB
         }
 #>
-      <#  @{
+        @{
             NodeName                = 'Cli1-Fabrikam'
-            IPAddress               = '192.168.3.100'
+            IPAddress               = '192.168.3.150'
             Role                    = @('domainJoin', 'RSAT', 'RDP')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
-            Lability_Media          = 'WIN10_x64_Enterprise_20H2_EN_Eval'
+            Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
             Lability_BootOrder      = 20
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Resource       = @()
@@ -175,7 +175,7 @@ WIN10_x86_Enterprise_LTSC_EN_Eval        x86   ISO Windows 10 32bit Enterprise L
                     Enable-PSRemoting -SkipNetworkProfileCheck -Force;
 '@
         }
-        #>
+        
 
     )
     NonNodeData = @{

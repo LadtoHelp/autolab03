@@ -10,9 +10,6 @@ Additional contributors of note: Jeff Hicks
 Disclaimer
 This example code is provided without copyright and AS IS.  It is free for you to use and modify.
 
-.notes
-20250228 - Leroy - Added the Remote Event Log Management componenets to the firewall rules to allow Remote Event Log Management 
-
 #>
 
 @{
@@ -30,22 +27,18 @@ This example code is provided without copyright and AS IS.  It is free for you t
             AddressFamily               = 'IPv4'
             IPNetwork                   = '192.168.3.0/24'
             IPNatName                   = 'LabNat'
-            DnsServerAddress            = '192.168.3.10'
+            DnsServerAddress            = '192.168.3.11'
 
             # Firewall settings to enable
             FirewallRuleNames           = @(
                 'FPS-ICMP4-ERQ-In';
                 'FPS-ICMP6-ERQ-In';
-                'FPS-SMB-In-TCP';
-                'RemoteEventLogSvc-In-TCP';
-                'RemoteEventLogSvc-NP-In-TCP';
-                'RemoteEventLogSvc-RPCSS-In-TCP'
-
+                'FPS-SMB-In-TCP'
             )
 
             # Domain and Domain Controller information
-            DomainName                  = "padgettech.local"
-            DomainDN                    = "DC=padgettech,DC=local"
+            DomainName                  = "roads.vic.gov.au"
+            DomainDN                    = "DC=ROADS,DC=VIC,DC=GOV,DC=AU"
             DCDatabasePath              = "C:\NTDS"
             DCLogPath                   = "C:\NTDS"
             SysvolPath                  = "C:\Sysvol"
@@ -53,10 +46,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
             PSDscAllowDomainUser        = $true
             
             # vanitydomain
-            Vanitydomain                = "starlighter.tech"
+            Vanitydomain                = "roads.vic.gov.au"
 
             # AD NETBIOSNAME
-            DomainNetBIOSNAME           = "DEV"
+            DomainNetBIOSNAME           = "ROADSVIC"
 
             # DHCP Server Data
             DHCPName                    = 'LabNet'
@@ -71,8 +64,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             DHCPRouter                  = '192.168.3.1'
 
             # ADCS Certificate Services information
-            CACN                        = 'Padgetech.local'
-            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=RLS"
+            CACN                        = 'vicroads.vic.gov.au'
+            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=ROADSVIC"
             CADatabasePath              = "C:\windows\system32\CertLog"
             CALogPath                   = "C:\CA_Logs"
             ADCSCAType                  = 'EnterpriseRootCA'
@@ -104,14 +97,14 @@ This example code is provided without copyright and AS IS.  It is free for you t
         DomainJoin = joions a computer to the domain
 #>
           
-         @{
+          @{
             NodeName                = 'DC1'
-            IPAddress               = '192.168.3.10'
+            IPAddress               = '192.168.3.11'
             Role                    = @('DC', 'DHCP', 'ADCS')
             Lability_BootOrder      = 10
-            Lability_BootDelay      = 60 # Number of seconds to delay before others
+            Lability_BootDelay      = 300 # Number of seconds to delay before others
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media          = '2019_x64_Standard_EN_Eval'
+            Lability_Media          = '2019_x64_Standard_EN_Core_Eval'
             Lability_MinimumMemory  = 2GB
             Lability_DvdDrive   = @{
                 
@@ -133,14 +126,14 @@ This example code is provided without copyright and AS IS.  It is free for you t
  
          @{
             NodeName                = 'S1'
-            IPAddress               = '192.168.3.50'
+            IPAddress               = '192.168.3.51'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role                    = @('DomainJoin', 'Web', 'ConfigMgr','RSAT')
+            Role                    = @('DomainJoin', 'Web')
             Lability_MinimumMemory  = 6GB
             Lability_StartupMemory  = 6GB;
             Lability_ProcessorCount = 4
             Lability_BootOrder      = 20
-            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services','Microsoft ODBC Driver 18 for SQL Server (x64)','Microsoft Entra Connect','Microsoft Edge')
+            Lability_Resource       = @()
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_DvdDrive       = @{
@@ -154,10 +147,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 Path               = "C:\Users\lelvi\Downloads\SQLServer2019-x64-ENU.iso"; 
             } 
             
-        } 
+        }  
         
 
-         @{
+          <# @{
             NodeName                = 'Cli1'
             IPAddress               = '192.168.3.100'
             Role                    = @('RSAT', 'RDP')
@@ -167,12 +160,11 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_BootOrder      = 20
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Resource       = @()
-            Lability_SecureBoot     = $true
             CustomBootStrap         = @'
                     # To enable PSRemoting on the client
                     Enable-PSRemoting -SkipNetworkProfileCheck -Force;
 '@
-        } 
+        }  #>
         
 
     )
@@ -184,7 +176,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             # See https://github.com/pluralsight/PS-AutoLab-Env/blob/master/Detailed-Setup-Instructions.md
             # for more information.
 
-            EnvironmentPrefix = 'DEV-'
+            EnvironmentPrefix = 'ROADS-'
             Media       = (
                 @{
                     <#
@@ -305,7 +297,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 },
                 @{
                     ID              = "CCMSETUPUPDATES"
-                    FileName        = "CCMUPDATES2403.zip"
+                    FileName        = "CCMUpdates.zip"
                     Checksum        = ''
                     Expand          = $true
                 },

@@ -216,11 +216,10 @@ Configuration AutoLab {
         } #OU
 
         foreach ($user in $Users) {
-            $UserPath = $user.distinguishedname.Split(",", 2)[1] -replace ('DC=Company,DC=Pri',$($node.DomainDN))
+
             xADUser $user.samaccountname {
                 Ensure                        = "Present"
-                #Path                          = $user.distinguishedname.split(",", 2)[1]
-                Path                          = $UserPath
+                Path                          = $user.distinguishedname.split(",", 2)[1]
                 DomainName                    = $node.domainname
                 Username                      = $user.samaccountname
                 GivenName                     = $user.givenname
@@ -238,15 +237,10 @@ Configuration AutoLab {
         } #user
 
         Foreach ($group in $Groups) {
-
-            $groupPath = $group.distinguishedname.Split(",", 2)[1] -replace ('DC=Company,DC=Pri',$($node.DomainDN))
-
-
             xADGroup $group.Name {
                 GroupName  = $group.name
                 Ensure     = 'Present'
-                #Path       = $group.distinguishedname.split(",", 2)[1]
-                Path       = $groupPath
+                Path       = $group.distinguishedname.split(",", 2)[1]
                 Category   = $group.GroupCategory
                 GroupScope = $group.GroupScope
                 Members    = $group.members
@@ -263,7 +257,7 @@ Configuration AutoLab {
 
 
         xADGroup AddLabAdmin {
-            GroupName        = 'Domain Admins'
+            GroupName        = 'Administrators'
             MembersToInclude = "$($node.labadmin)", 'Administrator'
         }
 
@@ -325,12 +319,12 @@ Configuration AutoLab {
             SetScript = {
                 Install-WindowsFeature RSAT-ADDS -IncludeManagementTools
                 Start-Process D:\setup.exe -args '/IAcceptExchangeServerLicenseTerms_DiagnosticDataOFF /prepareschema'
-                $sw = New-Object System.IO.StreamWriter("C:\Temp\TestFile.txt")
+                $sw = New-Object System.IO.StreamWriter("C:\TempFolder\TestFile.txt")
                 $sw.WriteLine("Some sample string")
                 $sw.Close()
             }
-            TestScript = { Test-Path "C:\Temp\TestFile.txt" }
-            GetScript = { @{ Result = (Get-Content C:\Temp\TestFile.txt) } }
+            TestScript = { Test-Path "C:\TempFolder\TestFile.txt" }
+            GetScript = { @{ Result = (Get-Content C:\TempFolder\TestFile.txt) } }
         }
     
     } #end nodes DC
@@ -1002,7 +996,14 @@ Configuration AutoLab {
             Ensure          = "Present"
         } 
 
-        
+        xADGroup CreateSCCMGroup {
+            GroupName        = "sccm-servers"
+            Ensure           = 'Present'
+            MembersToInclude = "CN=S1,OU=Servers,$($Node.DomainDN)"
+            Credential       = $DomainCredential
+            Path             = $SCCMOU
+            DependsOn        = "[xADOrganizationalUnit]CreateSCCM_OU"
+        }
 
     
 
@@ -1013,15 +1014,6 @@ Configuration AutoLab {
             Description = 'The collection for all SCCM Objects'
         
 
-        }
-
-        xADGroup CreateSCCMGroup {
-            GroupName        = "sccm-servers"
-            Ensure           = 'Present'
-            MembersToInclude = "CN=S1,OU=Servers,$($Node.DomainDN)"
-            Credential       = $DomainCredential
-            Path             = $SCCMOU
-            DependsOn        = "[xADOrganizationalUnit]CreateSCCM_OU"
         }
     
         xADUser CreateSCCM-SQLService {
@@ -1200,7 +1192,7 @@ Configuration AutoLab {
         }
 
         # Hard-coding params to allow tests to pass. Remove these
-        $ServerName = "$($node.NodeName)" + "." + "$($node.DomainName)"
+        $ServerName = "$($node.NodeName).$($node.DomainName)"
         $SiteCode = 'PRI'
         $SiteName = "$($node.DomainNetBIOSNAME)"
         $ConfigMgrVersion = 2403
@@ -1208,8 +1200,6 @@ Configuration AutoLab {
             New-Object System.Management.Automation.PSCredential("$($node.DomainNetBIOSNAME)\SCCM-Network", $(Convertto-SecureString -AsPlainText -String 'Generic' -Force))
             New-Object System.Management.Automation.PSCredential("$($node.DomainNetBIOSNAME)\SCCM-ClientPush", $(Convertto-SecureString -AsPlainText -String 'Generic' -Force))
             New-Object System.Management.Automation.PSCredential("$($node.DomainNetBIOSNAME)\SCCM-AdJoin", $(Convertto-SecureString -AsPlainText -String 'Generic' -Force))
-            New-Object System.Management.Automation.PSCredential("$($node.DomainNetBIOSNAME)\EmailUser", $(Convertto-SecureString -AsPlainText -String 'Generic' -Force))
-
         )
 
         $serverShortName = $ServerName.Split('.')[0]
@@ -1358,7 +1348,7 @@ Configuration AutoLab {
             Ensure            = 'Present'
             SQLServer         = "$($Node.NodeName)\$dbInstanceName"
             ContentDir        = 'C:\Apps\WSUS'
-            Products          = 'Windows'
+            Products          = '*'
             Classifications   = '*'
             UpstreamServerSSL = $false
             Synchronize       = $false
@@ -1385,7 +1375,7 @@ Configuration AutoLab {
             RoleCommunicationProtocol = 'HTTPorHTTPS'
             ClientsUsePKICertificate  = $true
             PreRequisiteComp          = $true
-            PreRequisitePath          = 'C:\Resources\CCMSETUPUPDATES\CCMSETUPUPDATES'
+            PreRequisitePath          = 'C:\Resources\CCMSETUPUPDATES'
             AdminConsole              = $true
             JoinCeip                  = $false
             MobileDeviceLanguage      = $false
@@ -1420,7 +1410,7 @@ Configuration AutoLab {
         }
 
         # Ensuring the machine reboots after SCCM install in order to be sure configurations proceed properly
- <#        Script RebootAfterSccmSetup {
+        Script RebootAfterSccmSetup {
             TestScript = {
                 return (Test-Path HKLM:\SOFTWARE\Microsoft\SMS\RebootAfterSCCMSetup)
             }
@@ -1439,11 +1429,6 @@ Configuration AutoLab {
             GetScript  = { return @{result = 'result' } }
             DependsOn  = '[xSccmInstall]SccmInstall'
         }
- #>
-        xpendingreboot RebootAfterSCCMSetup {
-            Name = "RebootAfterSCCMSetup"
-            DependsOn  = '[xSccmInstall]SccmInstall'
-        }
 
         # region ConfigCBMgr configurations
         foreach ($account in $CMAccounts) {
@@ -1453,7 +1438,7 @@ Configuration AutoLab {
                 AccountPassword      = $account
                 Ensure               = 'Present'
                 PsDscRunAsCredential = $SccmInstallAccount
-                DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+                DependsOn            = '[Script]RebootAfterSccmSetup'
             }
 
             [array]$cmAccountsDependsOn += "[CMAccounts]AddingAccount-$($account.Username)"
@@ -1467,7 +1452,7 @@ Configuration AutoLab {
             Port                 = 465
             UseSsl               = $true
             Enabled              = $true
-            UserName             = "$($node.DomainNetBIOSNAME)\EmailUser"
+            UserName             = "$($node.DomainNetBIOSNAME)\$($node.labadmin)"
             PsDscRunAsCredential = $SccmInstallAccount
             DependsOn            = $cmAccountsDependsOn
         }
@@ -1476,8 +1461,7 @@ Configuration AutoLab {
             SiteCode             = $SiteCode
             Enabled              = $true
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMSystemDiscovery CreateSystemDiscovery {
@@ -1493,16 +1477,14 @@ Configuration AutoLab {
             TimeSinceLastPasswordUpdateDays = 90
             ADContainers                    = @("LDAP://OU=Domain Controllers,$($Node.DomainDN)", "LDAP://CN=Computers,$($Node.DomainDN)")
             PsDscRunAsCredential            = $SccmInstallAccount
-            #DependsOn                       = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn                       = '[Script]RebootAfterSccmSetup'
         }
 
         CMNetworkDiscovery DisableNetworkDiscovery {
             SiteCode             = $SiteCode
             Enabled              = $false
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMHeartbeatDiscovery CreateHeartbeatDiscovery {
@@ -1511,8 +1493,7 @@ Configuration AutoLab {
             ScheduleInterval     = 'Days'
             ScheduleCount        = '1'
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMUserDiscovery CreateUserDiscovery {
@@ -1524,8 +1505,7 @@ Configuration AutoLab {
             DeltaDiscoveryMins   = 5
             ADContainers         = @("LDAP://CN=Users,$($Node.DomainDN)")
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMClientStatusSettings CreateClientStatusSettings {
@@ -1538,8 +1518,7 @@ Configuration AutoLab {
             StatusMessageDays      = 7
             HistoryCleanupDays     = 31
             PsDscRunAsCredential   = $SccmInstallAccount
-            #DependsOn              = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn              = '[Script]RebootAfterSccmSetup'
         }
 
         File CreateBackupFolder {
@@ -1557,8 +1536,7 @@ Configuration AutoLab {
             LatestBeginTime      = '2000'
             BackupLocation       = 'C:\cmsitebackups'
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup', '[File]CreateBackupFolder'
+            DependsOn            = '[Script]RebootAfterSccmSetup', '[File]CreateBackupFolder'
         }
 
         [array]$cmSiteMaintenanceDependsOn += '[CMSiteMaintenance]Backup'
@@ -1568,8 +1546,7 @@ Configuration AutoLab {
             TaskName             = 'Delete Aged EP Health Status History Data'
             Enabled              = $false
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         [array]$cmSiteMaintenanceDependsOn += '[CMSiteMaintenance]DeleteEP'
@@ -1580,8 +1557,7 @@ Configuration AutoLab {
             Enabled              = $true
             RunInterval          = 1380
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         [array]$cmSiteMaintenanceDependsOn += '[CMSiteMaintenance]UpdateAppTables'
@@ -1595,8 +1571,7 @@ Configuration AutoLab {
             BeginTime            = '1500'
             LatestBeginTime      = '2000'
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         [array]$cmSiteMaintenanceDependsOn += '[CMSiteMaintenance]InactiveDisco'
@@ -1607,8 +1582,7 @@ Configuration AutoLab {
             Value                = '192.168.3.1-192.168.3.254'
             Type                 = 'IPRange'
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMBoundaryGroups DemoBoundaryGroup {
@@ -1631,16 +1605,14 @@ Configuration AutoLab {
             RolesToInclude  = 'Full Administrator'
             ScopesToInclude = 'All'
             Ensure          = 'Present'
-            #DependsOn       = '[Script]RebootAfterSccmSetup'
-            DependsOn       = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn       = '[Script]RebootAfterSccmSetup'
         }
 
         CMCollectionMembershipEvaluationComponent CollectionSettings {
             SiteCode             = $SiteCode
             EvaluationMins       = 5
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMStatusReportingComponent StatusReportingSettings {
@@ -1656,8 +1628,7 @@ Configuration AutoLab {
             ServerReportFailureChecked = $true
             ServerReportType           = 'AllMilestones'
             PsDscRunAsCredential       = $SccmInstallAccount
-            #DependsOn                  = '[Script]RebootAfterSccmSetup'
-            DependsOn                   = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn                  = '[Script]RebootAfterSccmSetup'
         }
 
         Registry MaxHWMifSize {
@@ -1666,8 +1637,7 @@ Configuration AutoLab {
             ValueName = 'Max MIF Size'
             ValueData = 500000000
             ValueType = 'Dword'
-            #DependsOn = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn = '[Script]RebootAfterSccmSetup'
         }
 
         CMDistributionGroup DistroPtGroup {
@@ -1675,8 +1645,7 @@ Configuration AutoLab {
             DistributionGroup    = "$SiteCode - All Distribution Points"
             Ensure               = 'Present'
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMDistributionPoint DPRole {
@@ -1711,8 +1680,7 @@ Configuration AutoLab {
             UseSiteDatabase      = $true
             UseComputerAccount   = $true
             PsDscRunAsCredential = $SccmInstallAccount
-            #DependsOn            = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn            = '[Script]RebootAfterSccmSetup'
         }
 
         CMSoftwareUpdatePoint SUPInstall {
@@ -1726,13 +1694,12 @@ Configuration AutoLab {
             WsusIisSslPort                = '8531'
             WsusSsl                       = $false
             PsDscRunAsCredential          = $SccmInstallAccount
-            #DependsOn                     = '[Script]RebootAfterSccmSetup'
-            DependsOn            = '[xpendingreboot]RebootAfterSccmSetup'
+            DependsOn                     = '[Script]RebootAfterSccmSetup'
         }
 
         CMSoftwareUpdatePointComponent SUPComponent {
             SiteCode                                = $SiteCode
-            #EnableSynchronization                   = $true
+            EnableSynchronization                   = $true
             SynchronizeAction                       = 'SynchronizeFromMicrosoftUpdate'
             ScheduleType                            = 'Days'
             RecurInterval                           = 7
@@ -1875,9 +1842,7 @@ Configuration AutoLab {
         }
     }
 
-CMAccounts afwdkfjaw {
-
-}    
+    
 } # End AllNodes
 #endregion
 

@@ -126,7 +126,7 @@ Configuration AutoLab {
         } #End foreach
 
     } #end Firewall Rules
-    #endregion
+    #endregion All Nodes
 
     #region Domain Controller config
 
@@ -144,11 +144,11 @@ Configuration AutoLab {
                 'AD-Domain-Services',
                 'RSAT-AD-Tools',
                 'RSAT-AD-PowerShell',
-                'GPMC'
+                'GPMC',
                 #For Gui, might like
                 #'RSAT-DNS-Server',
                 #'RSAT-AD-AdminCenter',
-                #'RSAT-ADDS-Tools'
+                'RSAT-ADDS-Tools'
 
             )) {
             WindowsFeature $feature.Replace('-', '') {
@@ -159,13 +159,45 @@ Configuration AutoLab {
         } #End foreach
 
         xADDomain FirstDC {
-            DomainName                    = $Node.DomainName
+            DomainName                    = $Node.DomainNameConfiguration FileConfig
+{
+    param (
+        [Parameter(Mandatory = $true)]
+        [String] $CopyFrom,
+
+[Parameter(Mandatory = $true)]
+        [String] $CopyTo
+    )
+
+Import-DscResource -ModuleName PSDesiredStateConfiguration
+
+File FileTest
+    {
+        SourcePath = $CopyFrom
+        DestinationPath = $CopyTo
+        Ensure = 'Present'
+    }
+}
+
+Configuration NestedFileConfig
+{
+    Node localhost
+    {
+        FileConfig NestedConfig
+        {
+            CopyFrom = 'C:\Test\TestFile.txt'
+            CopyTo = 'C:\Test2'
+        }
+    }
+}
             DomainAdministratorCredential = $Credential
             SafemodeAdministratorPassword = $Credential
             DatabasePath                  = $Node.DCDatabasePath
             LogPath                       = $Node.DCLogPath
             SysvolPath                    = $Node.SysvolPath
             DependsOn                     = '[WindowsFeature]ADDomainServices'
+            DomainNetBiosName             = $Node.DomainNetBIOSNAME
+            d 
         }
 
         #Add OU, Groups, and Users
@@ -251,9 +283,25 @@ Configuration AutoLab {
             Ensure     = 'Present'
         }
 
+
+
+        #ExtendSchema
+        Script ExtendADSchema
+        {
+            SetScript = {
+                Install-WindowsFeature RSAT-ADDS -IncludeManagementTools
+                Start-Process D:\setup.exe -args '/IAcceptExchangeServerLicenseTerms_DiagnosticDataOFF /prepareschema'
+                $sw = New-Object System.IO.StreamWriter("C:\Temp\TestFile.txt")
+                $sw.WriteLine("Some sample string")
+                $sw.Close()
+            }
+            TestScript = { Test-Path "C:\Temp\TestFile.txt" }
+            GetScript = { @{ Result = (Get-Content C:\Temp\TestFile.txt) } }
+        }
+
     } #end nodes DC
 
-    #endregion
+    #endregion Domain Controller config
 
     #region DHCP
     node $AllNodes.Where({ $_.Role -eq 'DHCP' }).NodeName {
@@ -431,6 +479,13 @@ Configuration AutoLab {
 
         } #rsat script resource
 
+        WindowsFeatureSet RSAT
+        {
+            Name                 = @("RSAT-Role-Tools")
+            Ensure               = 'Present'
+            IncludeAllSubFeature = $true
+        }
+
 
     }#end RSAT Config
 
@@ -458,6 +513,7 @@ Configuration AutoLab {
         } # End RDP
     }
     #endregion
+    
     #region ADCS
 
     node $AllNodes.Where({ $_.Role -eq 'ADCS' }).NodeName {
@@ -868,7 +924,7 @@ Configuration AutoLab {
                 'AD-Domain-Services',
                 'RSAT-AD-Tools',
                 'RSAT-AD-PowerShell',
-                'GPMC'
+                'GPMC',
                 #For Gui, might like
                 #'RSAT-DNS-Server',
                 #'RSAT-AD-AdminCenter',
@@ -918,6 +974,11 @@ Configuration AutoLab {
 
         foreach ($user in $Users) {
 
+            if ($user.PasswordNeverExpires) {
+                [bool]$passwordneverexpires = $user.PasswordNeverExpires
+            } else {
+                $passwordneverexpires = $true
+            }
             xADUser $user.samaccountname {
                 Ensure                        = "Present"
                 Path                          = $user.distinguishedname.Split(",", 2)[1].Replace("$($Node.DomainDN)", "$($Node.DomainDNChild)")
@@ -925,13 +986,13 @@ Configuration AutoLab {
                 Username                      = $user.samaccountname
                 GivenName                     = $user.givenname
                 Surname                       = $user.Surname
-                DisplayName                   = "$($user.Displayname)" + " $($Node.DomainNameChild)"
+                DisplayName                   = "$($user.Displayname)" + " (" + "$($Node.DomainNameChild)" + ")"
                 Description                   = $user.description
                 Department                    = $User.department
                 Enabled                       = $true
                 Password                      = $DomainCredential
                 DomainAdministratorCredential = $DomainCredential
-                PasswordNeverExpires          = $True
+                PasswordNeverExpires          = $passwordneverexpires
                 DependsOn                     = '[xADDomain]child'
                 PasswordAuthentication        = 'Negotiate'
             }
@@ -970,7 +1031,10 @@ Configuration AutoLab {
 
         #Create Trust
 
+        [ipaddress]$MasterServer = $($Node.TrustDomainDNSServer)
+
         Script AddForwarder {
+          
 
             GetScript  = {
                 
@@ -994,7 +1058,8 @@ Configuration AutoLab {
 
             SetScript  = {
                 
-                Add-DnsServerConditionalForwarderZone -Name $using:TrustDomain -MasterServers "$($Node.TrustDomainDNSServer)" -PassThru
+                
+                Add-DnsServerConditionalForwarderZone -Name $using:TrustDomain -MasterServers @("$masterserver") -PassThru
 
             }
 

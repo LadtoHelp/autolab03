@@ -86,11 +86,21 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_SwitchName         = 'LabNet'
             Lability_ProcessorCount     = 1
             Lability_MinimumMemory      = 1GB
-            SecureBoot                  = $false
+            SecureBoot                  = $true
             Lability_Media              = '2016_x64_Standard_Core_EN_Eval'
 
             #Additional Admin
             LabAdmin                    = 'LabAdmin'
+
+            #RDS Details
+            BUILDRDSINFRA = $true
+            RDSCBName               = 'RDSConnectionBroker'
+            RDSCollectionName      = @('RDSCollection01')
+            RDSGatewayName         = 'Gateway'
+            RDSWebAccessName       = 'RDWebAccess'
+            RDSSessionHostName     = @('RDSessionHost')
+            RDSLicenseMode      = 'PerUser'
+            RDSGroups = @('RDS USERS')
 
         }
 
@@ -111,7 +121,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_BootOrder      = 10
             Lability_BootDelay      = 60 # Number of seconds to delay before others
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media          = '2019_x64_Standard_EN_Eval'
+            Lability_Media          = '2022_x64_Standard_EN_Core_Eval'
             Lability_MinimumMemory  = 2GB
             Lability_DvdDrive   = @{
                 
@@ -122,6 +132,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 ## Lability can resolve the ISO path using the built-in environment variables
                 ## NOTE: variable expansion is only available to Lability-specific node properties
                 Path = "C:\Users\lelvi\Downloads\ExchangeServer2019-x64-CU14.ISO"
+                VMGeneration = 2
                
             }
             Lability_ProcessorCount = 2
@@ -135,7 +146,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             NodeName                = 'S1'
             IPAddress               = '192.168.3.50'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role                    = @('DomainJoin', 'Web', 'ConfigMgr','RSAT')
+            Role                    = @('DomainJoin', 'Web', 'RDGateway','RSAT')
             Lability_MinimumMemory  = 6GB
             Lability_StartupMemory  = 6GB;
             Lability_ProcessorCount = 4
@@ -158,12 +169,31 @@ This example code is provided without copyright and AS IS.  It is free for you t
         
 
          @{
-            NodeName                = 'Cli1'
-            IPAddress               = '192.168.3.100'
-            Role                    = @('RSAT', 'RDP')
+            NodeName                = 'S2'
+            IPAddress               = '192.168.3.51'
+            Role                    = @('DomainJoin','RSAT', 'RDP','RDConnectionBroker','WEB')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
-            Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
+            #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
+            Lability_Media          = '2022_x64_Standard_EN_Eval'
+            Lability_BootOrder      = 20
+            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Resource       = @()
+            Lability_SecureBoot     = $true
+            CustomBootStrap         = @'
+                    # To enable PSRemoting on the client
+                    Enable-PSRemoting -SkipNetworkProfileCheck -Force;
+'@
+        }
+
+        @{
+            NodeName                = 'S3'
+            IPAddress               = '192.168.3.52'
+            Role                    = @('DomainJoin','RSAT', 'RDP','RDSessionHost')
+            Lability_ProcessorCount = 2
+            Lability_MinimumMemory  = 2GB
+            #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
+            Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_BootOrder      = 20
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Resource       = @()
@@ -232,7 +262,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 @{ Name = 'SqlServerDsc'; RequiredVersion = "15.2.0"; Provider = 'PSGallery' },
                 @{ Name = 'UpdateServicesDsc'; RequiredVersion = "1.2.1"; Provider = 'PSGallery' },
                 @{ Name = 'NetworkingDsc'; RequiredVersion = "8.2.0"; Provider = 'PSGallery' },
-                @{ Name = 'xHyper-V' ; RequiredVersion = '3.15.0.0'; Provider = 'PSGallery' }
+                @{ Name = 'xHyper-V' ; RequiredVersion = '3.15.0.0'; Provider = 'PSGallery' },
+                @{ Name = 'xRemoteDesktopSessionHost' ; RequiredVersion = '2.1.0'; Provider = 'PSGallery' }
 
             )
             Resource    = @(
@@ -306,6 +337,12 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 @{
                     ID              = "CCMSETUPUPDATES"
                     FileName        = "CCMUPDATES2403.zip"
+                    Checksum        = ''
+                    Expand          = $true
+                },
+                @{
+                    ID              = "CCMSETUPUPDATES2409"
+                    FileName        = "CCMUPDATES2409.zip"
                     Checksum        = ''
                     Expand          = $true
                 },

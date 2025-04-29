@@ -24,6 +24,7 @@ Configuration AutoLab {
     Import-DscResource -ModuleName NetworkingDsc -ModuleVersion 8.2.0
     Import-DscResource -ModuleName xHyper-V -ModuleVersion 3.15.0.0
     Import-DscResource -ModuleName xRemoteDesktopSessionHost -moduleVersion 2.1.0
+    Import-DscResource -ModuleName ActiveDirectoryDsc -ModuleVersion 6.6.2
 
     #endregion DSC Resources
 
@@ -257,10 +258,15 @@ Configuration AutoLab {
         }
 
         xADUser LabAdmin {
-            DomainName = $Node.DomainName
-            UserName   = $node.labadmin
-            Password   = $DomainCredential
-
+            DomainName                    = $Node.DomainName
+            UserName                      = $node.labadmin
+            Password                      = $DomainCredential
+            DomainAdministratorCredential = $DomainCredential
+            PasswordNeverResets           = $true
+            ChangePasswordAtLogon         = $false
+            Path                          = "CN=Users,$($node.DomainDN)"
+            Enabled                       = $true
+            DependsOn                     = '[xADDomain]FirstDC'
         }
 
 
@@ -326,6 +332,9 @@ Configuration AutoLab {
             SetScript  = {
                 Install-WindowsFeature RSAT-ADDS -IncludeManagementTools
                 Start-Process D:\setup.exe -args '/IAcceptExchangeServerLicenseTerms_DiagnosticDataOFF /prepareschema'
+                if (!(Test-Path "C:\temp" -ErrorAction si)) {
+                    md "C:\temp" 
+                }
                 $sw = New-Object System.IO.StreamWriter("C:\Temp\TestFile.txt")
                 $sw.WriteLine("Some sample string")
                 $sw.Close()
@@ -1796,129 +1805,205 @@ Configuration AutoLab {
     #endregion ConfigMgr
 
     #region RDS
-    if ($BUILDRDSINFRA) {
-        $RDSGroups = $LabData.AllNodes.RDSGROUPS
-        Foreach ($group in $RDSGroups) {
 
-            #$groupPath = $group.distinguishedname.Split(",", 2)[1] -replace ('DC=Company,DC=Pri', $($node.DomainDN))
+    if ($Labdata.AllNodes.BUILDRDSINFRA) {
 
+        node $AllNodes.Where({ $_.Role -eq 'DC' }).NodeName {
 
-            xADGroup $group.Name {
-                GroupName  = $group
-                Ensure     = 'Present'
-                #Path       = $group.distinguishedname.split(",", 2)[1]
-                #Path       = $groupPath
-                Category   = "Security"
-                GroupScope = 'Global'
-                #Members    = $group.members
-                #DependsOn  = '[xADDomain]FirstDC'
+            Log LogExample {
+                Message = 'Building the RDS infrastructure.'
+            }          
+
+            $RDSGroups = $Node.RDSGroups
+            Foreach ($RDSgroup in $RDSGroups) {
+
+                xADGroup $RDSgroup {
+                    GroupName  = $RDSgroup
+                    Ensure     = 'Present'
+                    #Path       = $group.distinguishedname.split(",", 2)[1]
+                    #Path       = $groupPath
+                    Category   = "Security"
+                    GroupScope = 'Global'
+                    #Members    = $group.members
+                    #DependsOn  = '[xADDomain]FirstDC'
+                }
+            }
+
+            WaitForAll CheckDomainJoinRDGateway {
+                ResourceNAme     = '[xComputer]JoinDC'
+                NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)
+                RetryCount       = 240
+                RetryIntervalSec = 15
+            }
+    
+            xDnsRecord Gateway_CNAME {
+                Zone                 = $Node.domainname
+                Name                 = 'gateway'
+                Type                 = 'cname'
+                Target               = "$($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName).$($Node.domainname)"
+                #HostNameAlias = 'quarks.contoso.com'
+                Ensure               = 'Present'
+                DNSServer            = "$($AllNodes.Where({ $_.Role -eq 'DC' }).NodeName).$($Node.domainname)"
+                DependsOn            = '[WaitForAll]CheckDomainJoinRDGateway'
+                PsDscRunAsCredential = $DomainCredential    
             }
         }
-
     }
+       
+    $RDConnectionBroker = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)"
+    $RDGateway = "$($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)"
+    
     node $AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName {
+
+        WindowsFeatureSet WindowsFeatureSetRSATTools
+        {
+            Name                 = @("RSAT-Role-Tools")
+            Ensure               = 'Present'
+            IncludeAllSubFeature = $true
+        }
+        
+        WaitForAll CheckDomainJoinRDGateway {
+            ResourceNAme     = '[xComputer]JoinDC'
+            NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)
+            RetryCount       = 240
+            RetryIntervalSec = 15
+        }
 
         WindowsFeature RDS_RD_Server {
             Ensure               = 'Present'
             Name                 = 'RDS-RD-Server'
             IncludeAllSubFeature = $true
+            DependsOn            = '[WaitForAll]CheckDomainJoinRDGateway'
         }
 
-        WindowsFeature webaccess {
+        WindowsFeature RDSGateway {
             Ensure               = 'Present'
-            Name                 = 'Web-Server'
+            Name                 = 'RDS-Gateway'
             IncludeAllSubFeature = $true
 
         }
-
-
-        WaitForAll CheckDomainJoinRDGateway {
-            ResourceNAme     = '[xComputer]JoinDC'
-            NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)
-            RetryCount       = 60
-            RetryIntervalSec = 60
-
+        
+        WindowsFeature webaccess {
+            Name   = 'RDS-Web-Access'
+            Ensure = 'Present' 
+        }
+        
+        Waitforall RDConnectionBrokerDomainJoin {
+            Resourcename     = "[xComputer]JoinDC"
+            Retrycount       = 240
+            RetryIntervalSec = 15
+            NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)
 
         }
 
-        xDnsRecord Gateway_CNAME {
-            Zone                 = $Node.domainname
-            Name                 = 'gateway'
-            Type                 = 'cname'
-            Target               = "$($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName).$($Node.domainname)"
-            #HostNameAlias = 'quarks.contoso.com'
-            Ensure               = 'Present'
-            DNSServer            = "DC1.$($Node.domainname)"
-            DependsOn            = '[WaitForAll]CheckDomainJoinRDGateway'
-            PsDscRunAsCredential = $DomainCredential
-
-        }
-
-        
-        
         xRDGatewayConfiguration RDGateway {
-            ConnectionBroker     = "connectionbroker.$($Node.DomainName)"
-            GatewayServer        = "gateway.$($Node.DomainName)"
+            ConnectionBroker     = $RDConnectionBroker
+            GatewayServer        = $RDGateway
             GatewayMode          = 'Automatic'
             ExternalFqdn         = "gateway.$($Node.Vanitydomain)"
             LogonMethod          = 'AllowUserToSelectDuringConnection'
             UseCachedCredentials = $false
             BypassLocal          = $false
-            DependsOn            = "[WindowsFeature]RDS_RD_Server"
+            DependsOn            = @("[WindowsFeature]RDS_RD_Server", "[Waitforall]RDConnectionBrokerDomainJoin")
+            PSDsCRunAsCredential = $DomainCredential
         }
-    
 
-        
     }
 
     node $AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName {
+        #$Global:RDConnectionBroker = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName).$($Node.domainname)"
+        #$Global:RDGateway = "$($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName).$($Node.domainname)"
+        $DomainCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\$($Credential.UserName)", $Credential.Password)
 
-        WindowsFeature RDSConnectionBroker {
- 
-            Name   = 'RDS-Connection-Broker'
-            Ensure = 'Present'
+        WindowsFeature RDSConnectionBroker { 
+            Name                 = 'RDS-Connection-Broker'
+            Ensure               = 'Present'
+            IncludeAllSubFeature = $true
         }
 
         WindowsFeature RDLicensing {
-            Ensure = "Present"
-            Name   = "RDS-Licensing"
+            Ensure               = "Present"
+            Name                 = "RDS-Licensing"
+            IncludeAllSubFeature = $true
         }
 
-        WaitForAll CheckDomainJoinRDGateway {
+        WindowsFeature RSAT-AD-PowerShell {
+            Ensure               = 'Present'
+            Name                 = 'RSAT-AD-PowerShell'
+            IncludeAllSubFeature = $true
+        }
+
+        WaitForAll CheckDomainJoinRDConnectionBroker {
             ResourceName     = '[xcomputer]JoinDC'
-            NodeName         = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName).$($Node.domainname)"
-            RetryIntervalSec = 60
-            RetryCount       = 60
+            NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)
+            RetryIntervalSec = 240
+            RetryCount       = 15
         }
 
-        xDnsRecord ConnectionBroker_CNAME {
+        Waitforall WebAccessGW {
+            ResourceName     = '[WindowsFeature]webaccess'
+            NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)
+            RetryIntervalSec = 15
+            RetryCount       = 240
+        }
+
+        <# xDnsRecord ConnectionBroker_CNAME {
             Zone                 = $Node.domainname
-            Name                 = 'gateway'
+            Name                 = 'connectionbroker'
             Type                 = 'cname'
-            Target               = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName).$($Node.domainname)"
+            Target               = $RDConnectionBroker
             #HostNameAlias = 'quarks.contoso.com'
             Ensure               = 'Present'
             DNSServer            = "$($AllNodes.Where({ $_.Role -eq 'DC' }).NodeName).$($Node.domainname)"
             DependsOn            = '[WaitForAll]CheckDomainJoinRDGateway'
             PsDscRunAsCredential = $DomainCredential
 
+        } #>
+
+        xADGroup AddtoTerminal {
+            GroupName            = 'Terminal Server License Servers'
+            MembersToInclude     = "CN=RDCB01,OU=Servers,$($node.DomainDN)"
+            PsDscRunAsCredential = $DomainCredential
+            Ensure               = 'Present'
+            MembershipAttribute  = 'DistinguishedName'
+            DependsOn            = @( 
+                "[WaitForAll]CheckDomainJoinRDConnectionBroker",
+                "[WindowsFeature]RSAT-AD-PowerShell")
         }
 
+        xRDSessionDeployment NewDeployment {
+ 
+            ConnectionBroker     = $RDConnectionBroker
+            SessionHost          = 'RDSH01' + "." + "$($node.domainname)"
+            WebAccessServer      = $RDgateway
+            DependsOn            = '[WaitForAll]WebAccessGW'
+            PsDscRunAsCredential = $domaincredential
+        }
         
-  
-    
+        Log LicenseConfigCommence {
+            Message = 'Start the License Config.'
+        }
+        
+        xRDLicenseConfiguration licenseconfig {
+            ConnectionBroker     = $RDConnectionBroker
+            LicenseServer        = $RDConnectionBroker
+            LicenseMode          = $Node.RDSLicenseMode
+            DependsOn            = @(
+                "[WindowsFeature]RDLicensing", 
+                "[WindowsFeature]RDSConnectionBroker", 
+                "[WaitForAll]CheckDomainJoinRDConnectionBroker", 
+                "[xADGroup]AddtoTerminal"
+                )
+            PsDscRunAsCredential = $Domaincredential
+        }
     }
 
     node $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName {
 
-        WindowsFeature SessionHost {
- 
+        WindowsFeature SessionHost { 
             Name   = 'RDS-RD-Server'
             Ensure = 'Present'
         }
-
-
-
 
         xRDServer RemoteDesktopSessionHost {
             ConnectionBroker = "connectionbroker.$($Node.DomainName)"

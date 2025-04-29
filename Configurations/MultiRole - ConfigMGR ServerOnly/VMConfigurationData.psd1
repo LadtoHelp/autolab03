@@ -44,8 +44,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             )
 
             # Domain and Domain Controller information
-            DomainName                  = "padgettech.local"
-            DomainDN                    = "DC=padgettech,DC=local"
+            DomainName                  = "etcssi.qr.com.au"
+            DomainDN                    = "DC=etcssi,DC=qr,DC=com,DC=au"
             DCDatabasePath              = "C:\NTDS"
             DCLogPath                   = "C:\NTDS"
             SysvolPath                  = "C:\Sysvol"
@@ -53,10 +53,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
             PSDscAllowDomainUser        = $true
             
             # vanitydomain
-            Vanitydomain                = "starlighter.tech"
+            Vanitydomain                = "etcssi.qr.com.au"
 
             # AD NETBIOSNAME
-            DomainNetBIOSNAME           = "DEV"
+            DomainNetBIOSNAME           = "ETCS"
 
             # DHCP Server Data
             DHCPName                    = 'LabNet'
@@ -71,8 +71,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             DHCPRouter                  = '192.168.3.1'
 
             # ADCS Certificate Services information
-            CACN                        = 'Padgetech.local'
-            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=RLS"
+            CACN                        = 'etcssi.qr.com.au'
+            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=ETCSSI"
             CADatabasePath              = "C:\windows\system32\CertLog"
             CALogPath                   = "C:\CA_Logs"
             ADCSCAType                  = 'EnterpriseRootCA'
@@ -93,14 +93,17 @@ This example code is provided without copyright and AS IS.  It is free for you t
             LabAdmin                    = 'LabAdmin'
 
             #RDS Details
-            BUILDRDSINFRA = $true
-            RDSCBName               = 'RDSConnectionBroker'
-            RDSCollectionName      = @('RDSCollection01')
-            RDSGatewayName         = 'Gateway'
-            RDSWebAccessName       = 'RDWebAccess'
-            RDSSessionHostName     = @('RDSessionHost')
-            RDSLicenseMode      = 'PerUser'
-            RDSGroups = @('RDS USERS')
+            BUILDRDSINFRA               = $true
+            RDSCBName                   = 'RDSConnectionBroker'
+            RDSCollectionName           = @('RDSCollection01')
+            RDSGatewayName              = 'Gateway'
+            RDSWebAccessName            = 'RDWebAccess'
+            RDSSessionHostName          = @('RDSessionHost')
+            RDSLicenseMode              = 'PerUser'
+            RDSGroups                   = @(
+                'RDS USERS';
+                'RDSWJH'
+                )
 
         }
 
@@ -112,9 +115,13 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RSAT = Remote Server Administration Tools for the client
         RDP = enables RDP and opens up required firewall rules
         DomainJoin = joions a computer to the domain
+        RDGW = Remote Desktop Services Gateway
+        RDCB = Remote Desktop Services Connection Broker
+        RDWA = Remote Desktop Services Web Access Server
+        RDSH = Remote Desktop Services SessionHost
 #>
           
-         @{
+        @{
             NodeName                = 'DC1'
             IPAddress               = '192.168.3.10'
             Role                    = @('DC', 'DHCP', 'ADCS')
@@ -123,7 +130,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Core_Eval'
             Lability_MinimumMemory  = 2GB
-            Lability_DvdDrive   = @{
+            Lability_DvdDrive       = @{
                 
                 ## This will not create a IDE/SCSI controller. Therefore, you must enusre
                 ## that the target controller already exists and does not already contain a disk
@@ -131,8 +138,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 ControllerLocation = 1;
                 ## Lability can resolve the ISO path using the built-in environment variables
                 ## NOTE: variable expansion is only available to Lability-specific node properties
-                Path = "C:\Users\lelvi\Downloads\ExchangeServer2019-x64-CU14.ISO"
-                VMGeneration = 2
+                Path               = "C:\Users\lelvi\Downloads\ExchangeServer2019-x64-CU14.ISO"
+                
                
             }
             Lability_ProcessorCount = 2
@@ -142,16 +149,17 @@ This example code is provided without copyright and AS IS.  It is free for you t
 '@
         } 
  
-         @{
-            NodeName                = 'S1'
+        @{
+            NodeName                = 'RDGateway'
             IPAddress               = '192.168.3.50'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role                    = @('DomainJoin', 'Web', 'RDGateway','RSAT')
-            Lability_MinimumMemory  = 6GB
-            Lability_StartupMemory  = 6GB;
-            Lability_ProcessorCount = 4
+            Role                    = @('DomainJoin', 'Web', 'RDGateway', 'RSAT')
+            Lability_MinimumMemory  = 2GB
+            Lability_StartupMemory  = 2GB;
+            Lability_ProcessorCount = 2
             Lability_BootOrder      = 20
-            Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services','Microsoft ODBC Driver 18 for SQL Server (x64)','Microsoft Entra Connect','Microsoft Edge')
+            #Lability Resource options 'SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services', 'Microsoft ODBC Driver 18 for SQL Server (x64)', 'Microsoft Entra Connect', 'Microsoft Edge'
+            Lability_Resource       = @('SQL', 'SQLSTUDIOMANAGMENT', 'Microsoft Edge')
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_DvdDrive       = @{
@@ -168,10 +176,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
         } 
         
 
-         @{
-            NodeName                = 'S2'
-            IPAddress               = '192.168.3.51'
-            Role                    = @('DomainJoin','RSAT', 'RDP','RDConnectionBroker','WEB')
+        @{
+            NodeName                = 'RDCB01'
+            IPAddress               = '192.168.3.11'
+            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDConnectionBroker', 'WEB')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
             #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
@@ -187,9 +195,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
         }
 
         @{
-            NodeName                = 'S3'
+            NodeName                = 'RDSH01'
             IPAddress               = '192.168.3.52'
-            Role                    = @('DomainJoin','RSAT', 'RDP','RDSessionHost')
+            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDSessionHost')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
             #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
@@ -215,7 +223,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             # for more information.
 
             EnvironmentPrefix = 'DEV-'
-            Media       = (
+            Media             = (
                 @{
                     <#
                     ## This media is a replica of the default '2016_x64_Standard_Nano_EN_Eval' media
@@ -242,10 +250,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     #>
                 }
             ) # Custom media additions that are different than the supplied defaults (media.json)
-            Network     = @( # Virtual switch in Hyper-V
+            Network           = @( # Virtual switch in Hyper-V
                 @{ Name = 'LabNet'; Type = 'Internal'; NetAdapterName = 'Ethernet'; AllowManagementOS = $true }
             )
-            DSCResource = @(
+            DSCResource       = @(
                 ## Download published version from the PowerShell Gallery or Github
                 @{ Name = 'xActiveDirectory'; RequiredVersion = "3.0.0.0"; Provider = 'PSGallery' },
                 @{ Name = 'xComputerManagement'; RequiredVersion = '4.1.0.0'; Provider = 'PSGallery' },
@@ -263,10 +271,11 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 @{ Name = 'UpdateServicesDsc'; RequiredVersion = "1.2.1"; Provider = 'PSGallery' },
                 @{ Name = 'NetworkingDsc'; RequiredVersion = "8.2.0"; Provider = 'PSGallery' },
                 @{ Name = 'xHyper-V' ; RequiredVersion = '3.15.0.0'; Provider = 'PSGallery' },
-                @{ Name = 'xRemoteDesktopSessionHost' ; RequiredVersion = '2.1.0'; Provider = 'PSGallery' }
+                @{ Name = 'xRemoteDesktopSessionHost' ; RequiredVersion = '2.1.0'; Provider = 'PSGallery' },
+                @{ Name = 'ActiveDirectoryDsc' ; RequiredVersion = '6.6.2'; Provider = 'PSGallery' }
 
             )
-            Resource    = @(
+            Resource          = @(
                 @{
                     Id       = 'Firefox'
                     Filename = 'Firefox-Latest.exe'
@@ -335,24 +344,24 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     Checksum = ''
                 },
                 @{
-                    ID              = "CCMSETUPUPDATES"
-                    FileName        = "CCMUPDATES2403.zip"
-                    Checksum        = ''
-                    Expand          = $true
+                    ID       = "CCMSETUPUPDATES"
+                    FileName = "CCMUPDATES2403.zip"
+                    Checksum = ''
+                    Expand   = $true
                 },
                 @{
-                    ID              = "CCMSETUPUPDATES2409"
-                    FileName        = "CCMUPDATES2409.zip"
-                    Checksum        = ''
-                    Expand          = $true
+                    ID       = "CCMSETUPUPDATES2409"
+                    FileName = "CCMUPDATES2409.zip"
+                    Checksum = ''
+                    Expand   = $true
                 },
                 @{
-                    ID              = "Microsoft SQL Server Reporting Services"
-                    FileName        = "SQLServerReportingServices.exe"
-                    Checksum        = ''
+                    ID       = "Microsoft SQL Server Reporting Services"
+                    FileName = "SQLServerReportingServices.exe"
+                    Checksum = ''
                 },
                 @{
-                    ID              =  'Microsoft ODBC Driver 18 for SQL Server (x64)'
+                    ID              = 'Microsoft ODBC Driver 18 for SQL Server (x64)'
                     DestinationPath = '\Resources\SQL'
                     FileName        = "msodbcsql_18_x64.msi"
                     Checksum        = ''

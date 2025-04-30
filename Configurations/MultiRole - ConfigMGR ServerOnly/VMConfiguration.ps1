@@ -25,6 +25,7 @@ Configuration AutoLab {
     Import-DscResource -ModuleName xHyper-V -ModuleVersion 3.15.0.0
     Import-DscResource -ModuleName xRemoteDesktopSessionHost -moduleVersion 2.1.0
     Import-DscResource -ModuleName ActiveDirectoryDsc -ModuleVersion 6.6.2
+    Import-DscResource -ModuleName ComputerManagementDsc -ModuleVersion 10.0.0
 
     #endregion DSC Resources
 
@@ -144,6 +145,21 @@ Configuration AutoLab {
             Path       = "C:\Resources\Edge\MicrosoftEdgeEnterpriseX64.msi"
             ProductId  = '9C06DDFE-0EC3-338F-90C0-0AD99902A53A'
         } #>
+
+        NetAdapterBinding DisableIPv6 {
+            InterfaceAlias = 'Ethernet'
+            ComponentId    = 'ms_tcpip6'
+            State          = 'Disabled'
+        }
+
+        WindowsEventLog DscAnalytic {
+            LogName            = 'Microsoft-Windows-Dsc/Analytic'
+            IsEnabled          = $true
+            LogMode            = 'Retain'
+            MaximumSizeInBytes = 4096MB
+            LogFilePath        = '%SystemRoot%\System32\Winevt\Logs\Microsoft-Windows-DSC%4Analytic.evtx'
+        }
+    
     
     }#end Firewall Rules
     
@@ -1807,6 +1823,8 @@ Configuration AutoLab {
     #region RDS
 
     if ($Labdata.AllNodes.BUILDRDSINFRA) {
+        $DomainCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\$($Credential.UserName)", $Credential.Password)
+        
 
         node $AllNodes.Where({ $_.Role -eq 'DC' }).NodeName {
 
@@ -1848,9 +1866,36 @@ Configuration AutoLab {
                 PsDscRunAsCredential = $DomainCredential    
             }
         }
+
+        #Build Session Hosts
+        Foreach ($RDsh in $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName) {
+
+            node $rdsh.nodename {
+                
+
+                WindowsFeature SessionHost { 
+                    Name   = 'RDS-RD-Server'
+                    Ensure = 'Present'
+                }
+
+                xRDServer RemoteDesktopSessionHost {
+                    ConnectionBroker = "connectionbroker.$($Node.DomainName)"
+                    Server           = "$($Node.nodename).$($Node.DomainName)"
+                    Role             = 'RDS-RD-Server'
+                    #dependson = @(
+                    #    "[xRDGatewayConfiguration]RDGateway" #,
+                    #    #"[xRDConnectionBroker]MyConnectionBroker"
+                    #) 
+                }
+
+
+    
+            }
+
+        }
     }
        
-    $RDConnectionBroker = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)"
+    $RDConnectionBroker = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)[0]"
     $RDGateway = "$($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)"
     
     node $AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName {
@@ -1896,17 +1941,11 @@ Configuration AutoLab {
 
         }
 
-        xRDGatewayConfiguration RDGateway {
-            ConnectionBroker     = $RDConnectionBroker
-            GatewayServer        = $RDGateway
-            GatewayMode          = 'Automatic'
-            ExternalFqdn         = "gateway.$($Node.Vanitydomain)"
-            LogonMethod          = 'AllowUserToSelectDuringConnection'
-            UseCachedCredentials = $false
-            BypassLocal          = $false
-            DependsOn            = @("[WindowsFeature]RDS_RD_Server", "[Waitforall]RDConnectionBrokerDomainJoin")
-            PSDsCRunAsCredential = $DomainCredential
+        Log StartGatewayConfig {
+            Message = "Commencing the Gateway config. Connection broker is $($RDConnectionBroker)"
         }
+
+        
 
     }
 
@@ -1993,12 +2032,25 @@ Configuration AutoLab {
                 "[WindowsFeature]RDSConnectionBroker", 
                 "[WaitForAll]CheckDomainJoinRDConnectionBroker", 
                 "[xADGroup]AddtoTerminal"
-                )
+            )
             PsDscRunAsCredential = $Domaincredential
+        }
+
+        xRDGatewayConfiguration RDGateway {
+            ConnectionBroker     = $RDConnectionBroker
+            GatewayServer        = $RDGateway
+            GatewayMode          = 'Automatic'
+            ExternalFqdn         = "gateway.$($Node.Vanitydomain)"
+            LogonMethod          = 'AllowUserToSelectDuringConnection'
+            UseCachedCredentials = $false
+            BypassLocal          = $false
+            #DependsOn            = @("[WindowsFeature]RDS_RD_Server", "[Waitforall]RDConnectionBrokerDomainJoin")
+            DependsOn            = "[Waitforall]WebAccessGW"
+            PSDsCRunAsCredential = $DomainCredential
         }
     }
 
-    node $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName {
+  <#   node $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName {
 
         WindowsFeature SessionHost { 
             Name   = 'RDS-RD-Server'
@@ -2016,12 +2068,12 @@ Configuration AutoLab {
         }
 
 
-    }
+    } #>
 
 
     #endRegion RDS
 
-
+    #Region Resources
     node $Allnodes.Where({ 'Firefox' -in $_.Lability_Resource }).NodeName {
         Script "InstallFirefox" {
             GetScript            = { return @{ Result = "" } }
@@ -2101,9 +2153,10 @@ Configuration AutoLab {
             PsDscRunAsCredential = $Credential
         }
     }
+    #endRegion Resources
  
 } # End AllNodes
-#endregion
+
 
 AutoLab -OutputPath $PSScriptRoot -ConfigurationData $PSScriptRoot\VMConfigurationData.psd1
 

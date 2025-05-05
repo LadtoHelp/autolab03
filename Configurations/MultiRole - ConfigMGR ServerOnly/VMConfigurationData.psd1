@@ -95,7 +95,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
             #RDS Details
             BUILDRDSINFRA               = $true
             RDSCBName                   = 'RDSConnectionBroker'
-            RDSCollectionName           = @('RDSCollection01')
+            RDSCollections           = @(
+                @{ Name = 'SIA-GW-Host'; Description = 'SIA-GW-Host Collection'; Type = 'Session'; Resources = @{}} 
+    )
             RDSGatewayName              = 'Gateway'
             RDSWebAccessName            = 'RDWebAccess'
             RDSSessionHostName          = @('RDSessionHost')
@@ -103,7 +105,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             RDSGroups                   = @(
                 'RDS USERS';
                 'RDSWJH'
-                )
+            )
 
         }
 
@@ -150,7 +152,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
         } 
  
         @{
-            NodeName                = 'RDGateway'
+            NodeName                = 'SIBNEMVTRGW01'
             IPAddress               = '192.168.3.50'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
             Role                    = @('DomainJoin', 'Web', 'RDGateway', 'RSAT')
@@ -177,9 +179,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
         
 
         @{
-            NodeName                = 'RDCB01'
+            NodeName                = 'SIBNEMVTRCB01'
             IPAddress               = '192.168.3.11'
-            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDConnectionBroker', 'WEB')
+            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDConnectionBroker', 'WEB','RDLicensing')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
             #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
@@ -195,7 +197,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
         }
 
         @{
-            NodeName                = 'RDSH01'
+            NodeName                = 'SIBNEMVTRSH01'
             IPAddress               = '192.168.3.52'
             Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDSessionHost')
             Lability_ProcessorCount = 2
@@ -210,7 +212,26 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     # To enable PSRemoting on the client
                     Enable-PSRemoting -SkipNetworkProfileCheck -Force;
 '@
-        } 
+        }
+
+        @{
+            NodeName                = 'SIBNEMVTRT001'
+            #IPAddress               = '192.168.3.52'
+            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDSessionHost')
+            Lability_ProcessorCount = 2
+            Lability_MinimumMemory  = 2GB
+            #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
+            Lability_Media          = '2022_x64_Standard_EN_Eval'
+            Lability_BootOrder      = 20
+            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
+            Lability_Resource       = @()
+            Lability_SecureBoot     = $true
+            CustomBootStrap         = @'
+                    # To enable PSRemoting on the client
+                    Enable-PSRemoting -SkipNetworkProfileCheck -Force;
+'@
+        }
+        
         
 
     )

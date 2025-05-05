@@ -1867,35 +1867,22 @@ Configuration AutoLab {
             }
         }
 
-        #Build Session Hosts
-        Foreach ($RDsh in $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName) {
 
-            node $rdsh.nodename {
-                
+    }
+    
+    if ($(($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)).count -gt 1) {
+        $RDConnectionBroker = "$(($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName) | select -first 1)" + "." + "$($Labdata.AllNodes.domainname)"
 
-                WindowsFeature SessionHost { 
-                    Name   = 'RDS-RD-Server'
-                    Ensure = 'Present'
-                }
+    }
+    Else {
+        $RDConnectionBroker = "$(($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName))" + "." + "$($Labdata.AllNodes.domainname)"
 
-                xRDServer RemoteDesktopSessionHost {
-                    ConnectionBroker = "connectionbroker.$($Node.DomainName)"
-                    Server           = "$($Node.nodename).$($Node.DomainName)"
-                    Role             = 'RDS-RD-Server'
-                    #dependson = @(
-                    #    "[xRDGatewayConfiguration]RDGateway" #,
-                    #    #"[xRDConnectionBroker]MyConnectionBroker"
-                    #) 
-                }
+    }
 
+    $RDSessionHosts = $($Labdata.allnodes.Where({ $_.role -eq 'RDSessionhost' })).nodename
+    #$RDSessionHosts = $($Allnodes.Where({ $_.Role -eq 'RDSessionHost' })).NodeName
 
     
-            }
-
-        }
-    }
-       
-    $RDConnectionBroker = "$($AllNodes.Where({ $_.Role -eq 'RDConnectionBroker' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)[0]"
     $RDGateway = "$($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)" + "." + "$($Labdata.AllNodes.domainname)"
     
     node $AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName {
@@ -1960,11 +1947,19 @@ Configuration AutoLab {
             IncludeAllSubFeature = $true
         }
 
+        $Features = @("RSAT-RDS-Tools")
+        foreach ($Feature in $Features) {
+            WindowsFeature $Feature {
+                Ensure               = 'Present'
+                Name                 = $Feature
+                IncludeAllSubFeature = $true
+            }
+        }
         WindowsFeature RDLicensing {
             Ensure               = "Present"
             Name                 = "RDS-Licensing"
             IncludeAllSubFeature = $true
-        }
+        }      
 
         WindowsFeature RSAT-AD-PowerShell {
             Ensure               = 'Present'
@@ -2001,23 +1996,46 @@ Configuration AutoLab {
 
         xADGroup AddtoTerminal {
             GroupName            = 'Terminal Server License Servers'
-            MembersToInclude     = "CN=RDCB01,OU=Servers,$($node.DomainDN)"
+            MembersToInclude     = $RDConnectionBroker.Substring(0, ($RDConnectionBroker.indexof('.'))) + "$"  #"CN=RDCB01,OU=Servers,$($node.DomainDN)"
             PsDscRunAsCredential = $DomainCredential
             Ensure               = 'Present'
-            MembershipAttribute  = 'DistinguishedName'
             DependsOn            = @( 
                 "[WaitForAll]CheckDomainJoinRDConnectionBroker",
                 "[WindowsFeature]RSAT-AD-PowerShell")
         }
 
-        xRDSessionDeployment NewDeployment {
+        
+        foreach ($RDSessionHost in $RDSessionHosts) {
+
+            Waitforall "CheckDomainJoin$RDSessionHost" {
+                ResourceName     = '[xComputer]JoinDC'
+                NodeName         = $RDSessionHost
+                RetryIntervalSec = 15
+                RetryCount       = 240
+            }
+            
+            xRDSessionDeployment "$($RDSessionHost)" {
+ 
+                ConnectionBroker     = $RDConnectionBroker
+                SessionHost          = "$RDSessionhost" + "." + "$($node.domainname)"
+                WebAccessServer      = $RDgateway
+                DependsOn            = @(
+                    '[WaitForAll]WebAccessGW',
+                    "[Waitforall]CheckDomainJoin$RDSessionHost"
+                    )
+                PsDscRunAsCredential = $domaincredential
+            }
+            
+        }
+        
+        <# xRDSessionDeployment NewDeployment {
  
             ConnectionBroker     = $RDConnectionBroker
             SessionHost          = 'RDSH01' + "." + "$($node.domainname)"
             WebAccessServer      = $RDgateway
             DependsOn            = '[WaitForAll]WebAccessGW'
             PsDscRunAsCredential = $domaincredential
-        }
+        } #>
         
         Log LicenseConfigCommence {
             Message = 'Start the License Config.'
@@ -2050,7 +2068,31 @@ Configuration AutoLab {
         }
     }
 
-  <#   node $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName {
+    node $AllNodes.Where({ $_.Role -eq 'RDLicensing' }).NodeName {
+        Script AddLicensingServer {
+            GetScript            = {
+                $currentVersion = Get-Content (Join-Path -Path $env:SYSTEMDRIVE -ChildPath 'version.txt')
+                return @{ 'Result' = "$currentVersion" }
+            }
+            TestScript           = {
+                # Create and invoke a scriptblock using the $GetScript automatic variable, which contains a string representation of the GetScript.
+                $state = [scriptblock]::Create($GetScript).Invoke()
+
+                if ( $state.Result -eq $using:version ) {
+                    Write-Verbose -Message ('{0} -eq {1}' -f $state.Result, $using:version)
+                    return $true
+                }
+                Write-Verbose -Message ('Version up-to-date: {0}' -f $using:version)
+                return $false
+            }
+            SetScript            = {
+                $using:version | Set-Content -Path (Join-Path -Path $env:SYSTEMDRIVE -ChildPath 'version.txt')
+            }
+            PsDscRunAsCredential = $DomainCredential
+        }
+    }
+
+    node $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName {
 
         WindowsFeature SessionHost { 
             Name   = 'RDS-RD-Server'
@@ -2068,7 +2110,7 @@ Configuration AutoLab {
         }
 
 
-    } #>
+    } 
 
 
     #endRegion RDS

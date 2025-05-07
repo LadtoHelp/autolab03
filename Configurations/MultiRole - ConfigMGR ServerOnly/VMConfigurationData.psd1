@@ -123,7 +123,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RDSH = Remote Desktop Services SessionHost
 #>
           
-        @{
+ <#        @{
             NodeName                = 'DC1'
             IPAddress               = '192.168.3.10'
             Role                    = @('DC', 'DHCP', 'ADCS')
@@ -149,7 +149,7 @@ This example code is provided without copyright and AS IS.  It is free for you t
             # This must be set to handle larger .mof files
             Set-Item -path wsman:\localhost\maxenvelopesize -value 1000
 '@
-        } 
+        }  #>
  
         @{
             NodeName                = 'SIBNEMVTRGW01'

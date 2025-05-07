@@ -1981,6 +1981,13 @@ Configuration AutoLab {
             RetryCount       = 240
         }
 
+        Waitforall RDSGateway {
+            ResourceName     = "[WindowsFeature]RDSGateway"
+            NodeName         = $($AllNodes.Where({ $_.Role -eq 'RDGateway' }).NodeName)
+            RetryIntervalSec = 15
+            RetryCount       = 240
+        }
+
         <# xDnsRecord ConnectionBroker_CNAME {
             Zone                 = $Node.domainname
             Name                 = 'connectionbroker'
@@ -2008,7 +2015,7 @@ Configuration AutoLab {
         foreach ($RDSessionHost in $RDSessionHosts) {
 
             Waitforall "CheckDomainJoin$RDSessionHost" {
-                ResourceName     = '[xComputer]JoinDC'
+                ResourceName     = '[WindowsFeature]SessionHost'
                 NodeName         = $RDSessionHost
                 RetryIntervalSec = 15
                 RetryCount       = 240
@@ -2063,48 +2070,50 @@ Configuration AutoLab {
             UseCachedCredentials = $false
             BypassLocal          = $false
             #DependsOn            = @("[WindowsFeature]RDS_RD_Server", "[Waitforall]RDConnectionBrokerDomainJoin")
-            DependsOn            = "[Waitforall]WebAccessGW"
+            DependsOn            = @("[Waitforall]WebAccessGW","[Waitforall]RDSGateway")
             PSDsCRunAsCredential = $DomainCredential
         }
     }
 
     node $AllNodes.Where({ $_.Role -eq 'RDLicensing' }).NodeName {
         Script AddLicensingServer {
-            GetScript            = {
-                $currentVersion = Get-Content (Join-Path -Path $env:SYSTEMDRIVE -ChildPath 'version.txt')
-                return @{ 'Result' = "$currentVersion" }
+            SetScript = {
+                $sw = New-Object System.IO.StreamWriter("C:\TestFile.txt")
+                $sw.WriteLine("Some sample string")
+                $sw.Close()
             }
-            TestScript           = {
-                # Create and invoke a scriptblock using the $GetScript automatic variable, which contains a string representation of the GetScript.
-                $state = [scriptblock]::Create($GetScript).Invoke()
+            TestScript = { Test-Path "C:\TestFile.txt" }
+            GetScript = { @{ Result = (Get-Content C:\TestFile.txt) } }
+        }
 
-                if ( $state.Result -eq $using:version ) {
-                    Write-Verbose -Message ('{0} -eq {1}' -f $state.Result, $using:version)
-                    return $true
-                }
-                Write-Verbose -Message ('Version up-to-date: {0}' -f $using:version)
-                return $false
-            }
-            SetScript            = {
-                $using:version | Set-Content -Path (Join-Path -Path $env:SYSTEMDRIVE -ChildPath 'version.txt')
-            }
-            PsDscRunAsCredential = $DomainCredential
+        xrdserver SetLicensingServer {
+            Server = $node.nodename + "." + $node.domainname
+            Role  = 'RDS-Licensing'
+            ConnectionBroker = $RDConnectionBroker
         }
     }
 
     node $AllNodes.Where({ $_.Role -eq 'RDSessionHost' }).NodeName {
-
+        
         WindowsFeature SessionHost { 
             Name   = 'RDS-RD-Server'
             Ensure = 'Present'
         }
 
+        WaitForAll RDCB {
+            NodeName            = $RDConnectionBroker.Substring(0, ($RDConnectionBroker.indexof('.')))
+            ResourceName        = "[WindowsFeature]RDSConnectionBroker"
+            Retryintervalsec    = 15
+            Retrycount          = 240
+
+        }
+
         xRDServer RemoteDesktopSessionHost {
-            ConnectionBroker = "connectionbroker.$($Node.DomainName)"
+            ConnectionBroker = $RDConnectionBroker
             Server           = "$($Node.nodename).$($Node.DomainName)"
             Role             = 'RDS-RD-Server'
-            #dependson = @(
-            #    "[xRDGatewayConfiguration]RDGateway" #,
+            dependson = @("[WaitForAll]RDCB")
+            #    "[xRDGatewayConfiguration]RDGateway" #,"[WindowsFeature]SessionHost",
             #    #"[xRDConnectionBroker]MyConnectionBroker"
             #) 
         }

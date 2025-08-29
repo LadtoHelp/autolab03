@@ -1,4 +1,4 @@
-
+. "$PSScriptRoot\EnterpriseAccessModel.ps1"
 
 Configuration AutoLab {
 
@@ -488,24 +488,35 @@ Configuration AutoLab {
         Script RSAT {
             # Adds RSAT which is now a Windows Capability in Windows 10
             TestScript = {
-                $rsat = @(
-                    'Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0',
-                    'Rsat.BitLocker.Recovery.Tools~~~~0.0.1.0',
-                    'Rsat.CertificateServices.Tools~~~~0.0.1.0',
-                    'Rsat.DHCP.Tools~~~~0.0.1.0',
-                    'Rsat.Dns.Tools~~~~0.0.1.0',
-                    'Rsat.FailoverCluster.Management.Tools~~~~0.0.1.0',
-                    'Rsat.FileServices.Tools~~~~0.0.1.0',
-                    'Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0',
-                    'Rsat.IPAM.Client.Tools~~~~0.0.1.0',
-                    'Rsat.ServerManager.Tools~~~~0.0.1.0'
-                )
-                $packages = $rsat | ForEach-Object { Get-WindowsCapability -Online -Name $_ }
-                if ($packages.state -contains "NotPresent") {
-                    Return $False
+
+                if ((Get-CimInstance Win32_OperatingSystem | select caption).caption -match "server") {
+                    $RSAT = Get-WindowsFeature -Name RSAT
+                    if ($RSAT.'Install State' -ne "Installed") {
+                        Return $false
+                    }
+                    else { Return $true } 
+
                 }
                 else {
-                    Return $True
+                    $rsat = @(
+                        'Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0',
+                        'Rsat.BitLocker.Recovery.Tools~~~~0.0.1.0',
+                        'Rsat.CertificateServices.Tools~~~~0.0.1.0',
+                        'Rsat.DHCP.Tools~~~~0.0.1.0',
+                        'Rsat.Dns.Tools~~~~0.0.1.0',
+                        'Rsat.FailoverCluster.Management.Tools~~~~0.0.1.0',
+                        'Rsat.FileServices.Tools~~~~0.0.1.0',
+                        'Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0',
+                        'Rsat.IPAM.Client.Tools~~~~0.0.1.0',
+                        'Rsat.ServerManager.Tools~~~~0.0.1.0'
+                    )
+                    $packages = $rsat | ForEach-Object { Get-WindowsCapability -Online -Name $_ }
+                    if ($packages.state -contains "NotPresent") {
+                        Return $False
+                    }
+                    else {
+                        Return $True
+                    } 
                 }
             } #test
 
@@ -542,11 +553,12 @@ Configuration AutoLab {
                 )
                 foreach ($item in $rsat) {
                     $pkg = Get-WindowsCapability -Online -Name $item
-                    if ($item.state -ne 'Installed') {
+                    if ($pkg.state -ne 'Installed') {
                         Add-WindowsCapability -Online -Name $item
                     }
                 }
 
+                Install-WindowsFeature -Name RSAT -IncludeManagementTools -includeallsubfeature
             } #set
 
         } #rsat script resource 
@@ -855,6 +867,37 @@ Configuration AutoLab {
                 }
             }
         }
+
+        if ($Labdata.AllNodes.BUILDRDSINFRA) {
+        script CreateRDSTemplate {
+            DependsOn  = '[xAdcsCertificationAuthority]ADCSConfig'
+            Credential = $DomainCredential
+
+            TestScript = {}
+            GetScript = {}
+            SetScript = {
+                $RDSTemplateProps = @{'flags'              = '131680';
+                    'msPKI-Cert-Template-OID'              = '1.3.6.1.4.1.311.21.8.16187918.14945684.15749023.11519519.4925321.197.13392998.8282280';
+                    'msPKI-Certificate-Application-Policy' = '1.3.6.1.4.1.311.80.1';
+                    'msPKI-Certificate-Name-Flag'          = '1207959552';
+                    #'msPKI-Enrollment-Flag'='34';
+                    'msPKI-Enrollment-Flag'                = '32';
+                    'msPKI-Minimal-Key-Size'               = '2048';
+                    'msPKI-Private-Key-Flag'               = '0';
+                    'msPKI-RA-Signature'                   = '0';
+                    #'msPKI-Supersede-Templates'='WebServer';
+                    'msPKI-Template-Minor-Revision'        = '3';
+                    'msPKI-Template-Schema-Version'        = '2';
+                    'pKICriticalExtensions'                = '2.5.29.15';
+                    'pKIDefaultCSPs'                       = '1,Microsoft RSA SChannel Cryptographic Provider';
+                    'pKIDefaultKeySpec'                    = '1';
+                    'pKIExtendedKeyUsage'                  = '1.3.6.1.4.1.311.80.1';
+                    'pKIMaxIssuingDepth'                   = '0';
+                    'revision'                             = '100'
+                }
+            }
+
+        } }
 
         script PublishWebServerTemplate2 {
             DependsOn  = '[Script]CreateWebServer2Template'
@@ -1867,6 +1910,8 @@ Configuration AutoLab {
             }
         }
 
+        
+
 
     }
     
@@ -2014,14 +2059,14 @@ Configuration AutoLab {
         
         foreach ($RDSessionHost in $RDSessionHosts) {
 
-            Waitforall "CheckDomainJoin$RDSessionHost" {
+            Waitforall $("CheckDomainJoin" + $RDSessionHost) {
                 ResourceName     = '[WindowsFeature]SessionHost'
                 NodeName         = $RDSessionHost
                 RetryIntervalSec = 15
                 RetryCount       = 240
             }
             
-            xRDSessionDeployment "$($RDSessionHost)" {
+            xRDSessionDeployment $($RDSessionHost) {
  
                 ConnectionBroker     = $RDConnectionBroker
                 SessionHost          = "$RDSessionhost" + "." + "$($node.domainname)"
@@ -2029,7 +2074,7 @@ Configuration AutoLab {
                 DependsOn            = @(
                     '[WaitForAll]WebAccessGW',
                     "[Waitforall]CheckDomainJoin$RDSessionHost"
-                    )
+                )
                 PsDscRunAsCredential = $domaincredential
             }
             
@@ -2070,25 +2115,44 @@ Configuration AutoLab {
             UseCachedCredentials = $false
             BypassLocal          = $false
             #DependsOn            = @("[WindowsFeature]RDS_RD_Server", "[Waitforall]RDConnectionBrokerDomainJoin")
-            DependsOn            = @("[Waitforall]WebAccessGW","[Waitforall]RDSGateway")
+            DependsOn            = @("[Waitforall]WebAccessGW", "[Waitforall]RDSGateway")
             PSDsCRunAsCredential = $DomainCredential
+        }
+
+        $LabData.AllNodes.RDSCollections | ForEach-Object {
+            $RDSCollection = $_.Name
+            $RDSCollectionName = $_.Name
+            $RDSCollectionDescription = $_.Description
+            $RDSCollectionUserGroup = $RDSCollection.UserGroup
+            $RDSCollectionAdminGroup = $RDSCollection.AdminGroup
+
+            xRDSessionCollection RDSCollection {
+                CollectionName        = $RDSCollectionName
+                CollectionDescription = $RDSCollectionDescription
+                #UserGroup            = "$($Node.DomainNetBIOSNAME)\$($RDSCollectionUserGroup)"
+                #AdminGroup           = "$($Node.DomainNetBIOSNAME)\$($RDSCollectionAdminGroup)"
+                ConnectionBroker      = "$($RDConnectionBroker)"
+                SessionHost           = "$($RDSessionHosts | select -first 1)" + "." + "$($Node.domainname)"
+                #Ensure               = 'Present'
+                PsDscRunAsCredential  = $DomainCredential
+            }
         }
     }
 
     node $AllNodes.Where({ $_.Role -eq 'RDLicensing' }).NodeName {
         Script AddLicensingServer {
-            SetScript = {
+            SetScript  = {
                 $sw = New-Object System.IO.StreamWriter("C:\TestFile.txt")
                 $sw.WriteLine("Some sample string")
                 $sw.Close()
             }
             TestScript = { Test-Path "C:\TestFile.txt" }
-            GetScript = { @{ Result = (Get-Content C:\TestFile.txt) } }
+            GetScript  = { @{ Result = (Get-Content C:\TestFile.txt) } }
         }
 
         xrdserver SetLicensingServer {
-            Server = $node.nodename + "." + $node.domainname
-            Role  = 'RDS-Licensing'
+            Server           = $node.nodename + "." + $node.domainname
+            Role             = 'RDS-Licensing'
             ConnectionBroker = $RDConnectionBroker
         }
     }
@@ -2101,10 +2165,10 @@ Configuration AutoLab {
         }
 
         WaitForAll RDCB {
-            NodeName            = $RDConnectionBroker.Substring(0, ($RDConnectionBroker.indexof('.')))
-            ResourceName        = "[WindowsFeature]RDSConnectionBroker"
-            Retryintervalsec    = 15
-            Retrycount          = 240
+            NodeName         = $RDConnectionBroker.Substring(0, ($RDConnectionBroker.indexof('.')))
+            ResourceName     = "[WindowsFeature]RDSConnectionBroker"
+            Retryintervalsec = 15
+            Retrycount       = 240
 
         }
 
@@ -2112,7 +2176,7 @@ Configuration AutoLab {
             ConnectionBroker = $RDConnectionBroker
             Server           = "$($Node.nodename).$($Node.DomainName)"
             Role             = 'RDS-RD-Server'
-            dependson = @("[WaitForAll]RDCB")
+            dependson        = @("[WaitForAll]RDCB")
             #    "[xRDGatewayConfiguration]RDGateway" #,"[WindowsFeature]SessionHost",
             #    #"[xRDConnectionBroker]MyConnectionBroker"
             #) 
@@ -2123,6 +2187,186 @@ Configuration AutoLab {
 
 
     #endRegion RDS
+
+    #region DCCHILD
+
+    node $AllNodes.Where({ $_.Role -eq 'DCCHILD' }).NodeName {
+
+        $DomainCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("$($node.DomainName)\$($Credential.UserName)", $Credential.Password)
+        $TargetDomainCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("corp.iconwater.com.au\$($Credential.UserName)", $Credential.Password)
+        $TrustDomain = $($Node.TrustDomain)
+
+        xComputer ComputerName {
+            Name = $Node.NodeName
+        }
+
+        ## Hack to fix DependsOn with hypens "bug" :(
+        foreach ($feature in @(
+                'DNS',
+                'AD-Domain-Services',
+                'RSAT-AD-Tools',
+                'RSAT-AD-PowerShell',
+                'GPMC',
+                #For Gui, might like
+                #'RSAT-DNS-Server',
+                #'RSAT-AD-AdminCenter',
+                'RSAT-ADDS-Tools'
+
+            )) {
+            WindowsFeature $feature.Replace('-', '') {
+                Ensure               = 'Present';
+                Name                 = $feature;
+                IncludeAllSubFeature = $true;
+            }
+        } #End foreach
+
+        #Wait for Parent domain
+        xWaitForADDomain productiondomain {
+            DomainName           = $Node.DomainName
+            DomainUserCredential = $DomainCredential
+            RetryIntervalSec     = 30
+            RetryCount           = 20
+
+        }
+
+        xADDomain child {
+            DomainName                    = $Node.DomainNameChild
+            DomainAdministratorCredential = $DomainCredential
+            SafemodeAdministratorPassword = $DomainCredential
+            #DomainType                    = ChildDomain
+            DomainMode                    = 'WinThreshold'
+            ParentDomainName              = $node.domainname
+        }
+
+        #Add OU, Groups, and Users
+        $OUs = (Get-Content $PSScriptRoot\AD-OU.json | ConvertFrom-Json)
+        $Users = (Get-Content $PSScriptRoot\AD-Users.json | ConvertFrom-Json)
+        $Groups = (Get-Content $PSScriptRoot\AD-Group.json | ConvertFrom-Json)
+
+        foreach ($OU in $OUs) {
+            xADOrganizationalUnit $OU.Name {
+                Path                            = $node.DomainDNChild
+                Name                            = $OU.Name
+                Description                     = $OU.Description
+                ProtectedFromAccidentalDeletion = $False
+                Ensure                          = "Present"
+                DependsOn                       = '[xADDomain]child'
+            }
+        } #OU
+
+        foreach ($user in $Users) {
+
+            if ($user.PasswordNeverExpires) {
+                [bool]$passwordneverexpires = $user.PasswordNeverExpires
+            }
+            else {
+                $passwordneverexpires = $true
+            }
+            xADUser $user.samaccountname {
+                Ensure                        = "Present"
+                Path                          = $user.distinguishedname.Split(",", 2)[1].Replace("$($Node.DomainDN)", "$($Node.DomainDNChild)")
+                DomainName                    = $node.domainname
+                Username                      = $user.samaccountname
+                GivenName                     = $user.givenname
+                Surname                       = $user.Surname
+                DisplayName                   = "$($user.Displayname)" + " (" + "$($Node.DomainNameChild)" + ")"
+                Description                   = $user.description
+                Department                    = $User.department
+                Enabled                       = $true
+                Password                      = $DomainCredential
+                DomainAdministratorCredential = $DomainCredential
+                PasswordNeverExpires          = $passwordneverexpires
+                DependsOn                     = '[xADDomain]child'
+                PasswordAuthentication        = 'Negotiate'
+            }
+        } #user
+
+
+        <# 
+        #Create SCCM Agent install
+        Script SetSCCMAgentInstallGPLink
+        
+        {
+            Credential = $DomainCredential
+            
+            TestScript = {
+                            try {
+                                $GPLink = (get-gpo -Name "Deploy SCCM Agent" -Domain $Using:Node.DomainNameChild).ID
+                                $GPLinks = (Get-GPInheritance -Domain $Using:Node.DomainNameChild -Target $Using:Node.DomainDNChild).gpolinks | Where-Object {$_.GpoID -like "*$GPLink*"}
+                                if ($GPLinks.Enabled -eq $True) {return $True}
+                                else {return $False}
+                                }
+                            catch {
+                                Return $False
+                                }
+                         }
+            SetScript = {
+                            New-GPLink -name "Deploy SCCM Agent" -domain $Using:Node.DomainNameChild -Target $Using:Node.DomainDNChild -LinkEnabled Yes
+                        }
+            GetScript = {
+                           $GPLink = (get-gpo -Name "Deploy SCCM Agent" -Domain $Using:Node.DomainNameChild).ID
+                           $GPLinks = (Get-GPInheritance -Domain $Using:Node.DomainNameChild -Target $Using:Node.DomainDNChild).gpolinks | Where-Object {$_.GpoID -like "*$GPLink*"}
+                           return @{Result = "$($GPLinks.DisplayName) = $($GPLinks.Enabled)"}
+                        }
+            DependsOn =  '[xADDomain]child'
+        }
+         #>
+
+        #Create Trust
+
+        [ipaddress]$MasterServer = $($Node.TrustDomainDNSServer)
+
+        Script AddForwarder {
+          
+
+            GetScript  = {
+                
+                Get-DnsServerZone -Name $using:TrustDomain -ErrorAction SilentlyContinue
+
+
+            }
+
+            TestScript = {
+
+                $Zone = Get-DnsServerZone -Name $using:TrustDomain -ErrorAction SilentlyContinue
+                if ($null -eq $Zone) {
+                    Return $false
+                }
+                else {
+                    Return $true
+                }
+
+
+            }
+
+            SetScript  = {
+                
+                
+                Add-DnsServerConditionalForwarderZone -Name $using:TrustDomain -MasterServers @("$masterserver") -PassThru
+
+            }
+
+            DependsOn  = '[xADDomain]child'
+        }
+
+
+
+        xADDomainTrust Trust {
+            TargetDomainAdministratorCredential = $TargetDomainCredential
+            TargetDomainName                    = "$($Node.TrustDomain)"
+            TrustType                           = "External"
+            TrustDirection                      = 'Bidirectional'
+            SourceDomainName                    = $Node.DomainNameChild
+            DependsOn                           = '[Script]AddForwarder'
+
+        }
+
+
+    }
+
+
+
+    #endregion
 
     #Region Resources
     node $Allnodes.Where({ 'Firefox' -in $_.Lability_Resource }).NodeName {

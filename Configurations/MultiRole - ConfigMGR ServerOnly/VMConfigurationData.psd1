@@ -44,8 +44,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             )
 
             # Domain and Domain Controller information
-            DomainName                  = "etcssi.qr.com.au"
-            DomainDN                    = "DC=etcssi,DC=qr,DC=com,DC=au"
+            DomainName                  = "contoso.local"
+            DomainDN                    = "DC=Contoso,DC=Local"
             DCDatabasePath              = "C:\NTDS"
             DCLogPath                   = "C:\NTDS"
             SysvolPath                  = "C:\Sysvol"
@@ -53,10 +53,10 @@ This example code is provided without copyright and AS IS.  It is free for you t
             PSDscAllowDomainUser        = $true
             
             # vanitydomain
-            Vanitydomain                = "etcssi.qr.com.au"
+            Vanitydomain                = "contoso.com.au"
 
             # AD NETBIOSNAME
-            DomainNetBIOSNAME           = "ETCS"
+            DomainNetBIOSNAME           = "CONTOSO"
 
             # DHCP Server Data
             DHCPName                    = 'LabNet'
@@ -71,8 +71,8 @@ This example code is provided without copyright and AS IS.  It is free for you t
             DHCPRouter                  = '192.168.3.1'
 
             # ADCS Certificate Services information
-            CACN                        = 'etcssi.qr.com.au'
-            CADNSuffix                  = "C=US,L=Phoenix,S=Arizona,O=ETCSSI"
+            CACN                        = 'Contoso.Local'
+            CADNSuffix                  = "C=AU,L=Brisbane,S=Queensland,O=ContosoCA"
             CADatabasePath              = "C:\windows\system32\CertLog"
             CALogPath                   = "C:\CA_Logs"
             ADCSCAType                  = 'EnterpriseRootCA'
@@ -93,11 +93,11 @@ This example code is provided without copyright and AS IS.  It is free for you t
             LabAdmin                    = 'LabAdmin'
 
             #RDS Details
-            BUILDRDSINFRA               = $true
+            BUILDRDSINFRA               = $false
             RDSCBName                   = 'RDSConnectionBroker'
-            RDSCollections           = @(
-                @{ Name = 'SIA-GW-Host'; Description = 'SIA-GW-Host Collection'; Type = 'Session'; Resources = @{}} 
-    )
+            RDSCollections              = @(
+                @{ Name = 'SIA-GW-Host'; Description = 'SIA-GW-Host Collection'; Type = 'Session'; Resources = @{} } 
+            )
             RDSGatewayName              = 'Gateway'
             RDSWebAccessName            = 'RDWebAccess'
             RDSSessionHostName          = @('RDSessionHost')
@@ -106,6 +106,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
                 'RDS USERS';
                 'RDSWJH'
             )
+
+            # Enable Enterprise Access Model for AD 
+            EnableEnterpriseAccessModel = $true
 
         }
 
@@ -121,16 +124,17 @@ This example code is provided without copyright and AS IS.  It is free for you t
         RDCB = Remote Desktop Services Connection Broker
         RDWA = Remote Desktop Services Web Access Server
         RDSH = Remote Desktop Services SessionHost
+        ConfigMgr = Configuration Manager Setup
 #>
           
- <#        @{
-            NodeName                = 'DC1'
+        @{
+            NodeName                = 'DC01'
             IPAddress               = '192.168.3.10'
             Role                    = @('DC', 'DHCP', 'ADCS')
             Lability_BootOrder      = 10
             Lability_BootDelay      = 60 # Number of seconds to delay before others
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Media          = '2022_x64_Standard_EN_Core_Eval'
+            Lability_Media          = '2016_x64_Datacenter_Core_EN_Eval'
             Lability_MinimumMemory  = 2GB
             Lability_DvdDrive       = @{
                 
@@ -149,19 +153,21 @@ This example code is provided without copyright and AS IS.  It is free for you t
             # This must be set to handle larger .mof files
             Set-Item -path wsman:\localhost\maxenvelopesize -value 1000
 '@
-        }  #>
+        }
  
         @{
-            NodeName                = 'SIBNEMVTRGW01'
+            NodeName                = 'S01'
             IPAddress               = '192.168.3.50'
             #Role = 'DomainJoin' # example of multiple roles @('DomainJoin', 'Web')
-            Role                    = @('DomainJoin', 'Web', 'RDGateway', 'RSAT')
+            Role                    = @('DomainJoin', 'Web', 'RSAT')
             Lability_MinimumMemory  = 2GB
             Lability_StartupMemory  = 2GB;
             Lability_ProcessorCount = 2
             Lability_BootOrder      = 20
             #Lability Resource options 'SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES', 'Microsoft SQL Server Reporting Services', 'Microsoft ODBC Driver 18 for SQL Server (x64)', 'Microsoft Entra Connect', 'Microsoft Edge'
-            Lability_Resource       = @('SQL', 'SQLSTUDIOMANAGMENT', 'Microsoft Edge')
+            #Lability_Resource       = @('SQL', 'MDT', 'ADKSETUP', 'ADKPESETUP', 'SQLSTUDIOMANAGMENT', 'CCMSETUPUPDATES2409', 'Microsoft SQL Server Reporting Services', 'Microsoft ODBC Driver 18 for SQL Server (x64)')
+            Lability_Resource       = @('SQL', 'SQLSTUDIOMANAGMENT', 'Microsoft SQL Server Reporting Services', 'Microsoft ODBC Driver 18 for SQL Server (x64)')
+            Lability_SecureBoot     = $true
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Media          = '2022_x64_Standard_EN_Eval'
             Lability_DvdDrive       = @{
@@ -179,9 +185,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
         
 
         @{
-            NodeName                = 'SIBNEMVTRCB01'
+            NodeName                = 'S02'
             IPAddress               = '192.168.3.11'
-            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDConnectionBroker', 'WEB','RDLicensing')
+            Role                    = @( 'RSAT', 'RDP', 'WEB')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
             #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
@@ -195,33 +201,15 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     Enable-PSRemoting -SkipNetworkProfileCheck -Force;
 '@
         }
-
+ 
         @{
-            NodeName                = 'SIBNEMVTRSH01'
-            IPAddress               = '192.168.3.52'
-            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDSessionHost')
-            Lability_ProcessorCount = 2
-            Lability_MinimumMemory  = 2GB
-            #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
-            Lability_Media          = '2022_x64_Standard_EN_Eval'
-            Lability_BootOrder      = 20
-            Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
-            Lability_Resource       = @()
-            Lability_SecureBoot     = $true
-            CustomBootStrap         = @'
-                    # To enable PSRemoting on the client
-                    Enable-PSRemoting -SkipNetworkProfileCheck -Force;
-'@
-        }
-
-        @{
-            NodeName                = 'SIBNEMVTRT001'
+            NodeName                = 'C03'
             #IPAddress               = '192.168.3.52'
-            Role                    = @('DomainJoin', 'RSAT', 'RDP', 'RDSessionHost')
+            Role                    = @('DomainJoin', 'RSAT', 'RDP')
             Lability_ProcessorCount = 2
             Lability_MinimumMemory  = 2GB
-            #Lability_Media          = 'WIN10_x64_Enterprise_22H2_EN_Eval'
-            Lability_Media          = '2022_x64_Standard_EN_Eval'
+            Lability_Media          = 'WIN11_x64_Enterprise_24H2_EN_Eval'
+            #Lability_Media          = '2025_x64_Standard_EN_Eval'
             Lability_BootOrder      = 20
             Lability_timeZone       = 'US Mountain Standard Time' #[System.TimeZoneInfo]::GetSystemTimeZones()
             Lability_Resource       = @()
@@ -231,6 +219,9 @@ This example code is provided without copyright and AS IS.  It is free for you t
                     Enable-PSRemoting -SkipNetworkProfileCheck -Force;
 '@
         }
+
+
+
         
         
 
